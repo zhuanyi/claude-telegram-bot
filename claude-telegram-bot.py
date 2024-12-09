@@ -8,7 +8,6 @@ import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
 import anthropic
-from anthropic.types import Usage
 from typing import Dict, List, Any
 import xml.etree.ElementTree as ET
 import PyPDF2
@@ -200,65 +199,15 @@ async def model_button_callback(update: Update, context):
 
 
 async def usage_command(update: Update, context):
-    """Comprehensive billing and usage information."""
+    """Check token usage and provide information."""
     user_id = update.effective_user.id
     session = get_or_create_session(user_id)
 
-    # Validate Anthropic API key
-    anthropic_key = os.getenv('ANTHROPIC_API_KEY')
-    if not anthropic_key:
-        await update.message.reply_text("Anthropic API key is not configured.")
-        return
-
-    # Show typing indicator while fetching billing info
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id,
-        action=telegram.constants.ChatAction.TYPING
+    await update.message.reply_text(
+        f"Current Session Details:\n"
+        f"• Current Model: {session.current_model}\n"
+        f"• Tokens Used: {session.token_usage}"
     )
-
-    try:
-        # Initialize Anthropic client
-        client = anthropic.Anthropic(api_key=anthropic_key)
-
-        # Fetch billing information
-        # Note: The exact method might vary based on Anthropic's API.
-        # This is a hypothetical implementation based on typical API designs
-        try:
-            # Fetch current month's usage
-            current_month = datetime.datetime.now().strftime("%Y-%m")
-            usage = client.usage.list(
-                start_date=f"{current_month}-01",
-                end_date=datetime.datetime.now().strftime("%Y-%m-%d")
-            )
-
-            # Prepare usage message
-            usage_message = [
-                "🤖 Anthropic API Usage Report 🤖",
-                f"• Billing Period: {current_month}",
-                f"• Total Input Tokens: {usage.total_input_tokens:,}",
-                f"• Total Output Tokens: {usage.total_output_tokens:,}",
-                f"• Total Tokens: {usage.total_tokens:,}",
-                f"• Current Model: {session.current_model}"
-            ]
-
-            # Current session tokens
-            usage_message.append(
-                f"• Current Session Tokens: {session.token_usage:,}"
-            )
-
-            await update.message.reply_text("\n".join(usage_message))
-
-        except Exception as billing_error:
-            logger.error(f"Billing info fetch error: {billing_error}")
-            await update.message.reply_text(
-                "Unable to fetch detailed billing information. "
-                f"Current session tokens: {session.token_usage}"
-            )
-
-    except Exception as e:
-        logger.error(f"Error in usage command: {e}")
-        logger.error(traceback.format_exc())
-        await update.message.reply_text("An error occurred while fetching usage information.")
 
 async def assistant_selection_command(update: Update, context):
     """Allow user to select an assistant mode."""
