@@ -284,15 +284,14 @@ async def handle_message(update: Update, context):
         system_prompt = assistant_details.get('prompt', 'You are a helpful AI assistant.')
 
         # Prepare messages with conversation history and system prompt
-        messages = [
-            {"role": "system", "content": system_prompt}
-        ] + session.conversation_history + [
+        messages = session.conversation_history + [
             {"role": "user", "content": user_message}
         ]
 
         # Generate response using Claude
         response = client.messages.create(
             model=session.current_model,
+            system=system_prompt,
             max_tokens=1000,
             messages=messages
         )
