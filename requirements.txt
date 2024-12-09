@@ -3,4 +3,3 @@ pyTelegramBotAPI
 SpeechRecognition
 python-telegram-bot
 gunicorn
-asyncio

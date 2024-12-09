@@ -529,6 +529,10 @@ def main():
         application.add_handler(CommandHandler('sentiment', analyze_sentiment_command))
         application.add_handler(CommandHandler('translate', translate_command))
         application.add_handler(CommandHandler('explain', code_explain_command))
+
+        application.add_handler(
+            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
+        )
         # Start the bot
         logger.info("Starting Enhanced Claude Telegram Bot...")
         application.run_polling(drop_pending_updates=True)
