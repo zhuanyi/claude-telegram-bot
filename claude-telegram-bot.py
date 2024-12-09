@@ -33,17 +33,17 @@ def setup_logging():
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
-    # File Handler with Rotation
-    log_file_path = os.path.join(LOG_DIR, 'bot.log')
-    file_handler = RotatingFileHandler(
-        log_file_path, 
-        maxBytes=10*1024*1024,  # 10 MB
-        backupCount=5
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(file_formatter)
-    logger.addHandler(file_handler)
+    # # File Handler with Rotation
+    # log_file_path = os.path.join(LOG_DIR, 'bot.log')
+    # file_handler = RotatingFileHandler(
+    #     log_file_path,
+    #     maxBytes=10*1024*1024,  # 10 MB
+    #     backupCount=5
+    # )
+    # file_handler.setLevel(logging.DEBUG)
+    # file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # file_handler.setFormatter(file_formatter)
+    # logger.addHandler(file_handler)
 
     # Create formatters
     std_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
