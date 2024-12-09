@@ -1,4 +1,4 @@
-anthropic
+anthropic>=0.12.0
 pyTelegramBotAPI
 SpeechRecognition
 python-telegram-bot

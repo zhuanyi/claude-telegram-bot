@@ -1,12 +1,14 @@
 import os, sys
 import logging
 import traceback
+import datetime
 from logging.handlers import RotatingFileHandler
 #from dotenv import load_dotenv
 import telegram
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
 import anthropic
+from anthropic.types import Usage
 from typing import Dict, List
 import xml.etree.ElementTree as ET
 
@@ -132,7 +134,7 @@ async def start_command(update: Update, context):
     
     await update.message.reply_text(
         "Hi! I'm a Claude-powered Telegram bot. Available commands:\n"
-        "/newsession - Start new conversation\n"
+        "/new - Start new conversation\n"
         "/model - Change AI model\n"
         "/assistant - Change assistant mode\n"
         "/usage - Check token usage\n"
@@ -194,15 +196,65 @@ async def model_button_callback(update: Update, context):
 
 
 async def usage_command(update: Update, context):
-    """Check token usage and provide information."""
+    """Comprehensive billing and usage information."""
     user_id = update.effective_user.id
     session = get_or_create_session(user_id)
 
-    await update.message.reply_text(
-        f"Current Session Details:\n"
-        f"• Current Model: {session.current_model}\n"
-        f"• Tokens Used: {session.token_usage}"
+    # Validate Anthropic API key
+    anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+    if not anthropic_key:
+        await update.message.reply_text("Anthropic API key is not configured.")
+        return
+
+    # Show typing indicator while fetching billing info
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action=telegram.constants.ChatAction.TYPING
     )
+
+    try:
+        # Initialize Anthropic client
+        client = anthropic.Anthropic(api_key=anthropic_key)
+
+        # Fetch billing information
+        # Note: The exact method might vary based on Anthropic's API.
+        # This is a hypothetical implementation based on typical API designs
+        try:
+            # Fetch current month's usage
+            current_month = datetime.datetime.now().strftime("%Y-%m")
+            usage = client.usage.list(
+                start_date=f"{current_month}-01",
+                end_date=datetime.datetime.now().strftime("%Y-%m-%d")
+            )
+
+            # Prepare usage message
+            usage_message = [
+                "🤖 Anthropic API Usage Report 🤖",
+                f"• Billing Period: {current_month}",
+                f"• Total Input Tokens: {usage.total_input_tokens:,}",
+                f"• Total Output Tokens: {usage.total_output_tokens:,}",
+                f"• Total Tokens: {usage.total_tokens:,}",
+                f"• Current Model: {session.current_model}"
+            ]
+
+            # Current session tokens
+            usage_message.append(
+                f"• Current Session Tokens: {session.token_usage:,}"
+            )
+
+            await update.message.reply_text("\n".join(usage_message))
+
+        except Exception as billing_error:
+            logger.error(f"Billing info fetch error: {billing_error}")
+            await update.message.reply_text(
+                "Unable to fetch detailed billing information. "
+                f"Current session tokens: {session.token_usage}"
+            )
+
+    except Exception as e:
+        logger.error(f"Error in usage command: {e}")
+        logger.error(traceback.format_exc())
+        await update.message.reply_text("An error occurred while fetching usage information.")
 
 async def assistant_selection_command(update: Update, context):
     """Allow user to select an assistant mode."""
@@ -518,7 +570,7 @@ def main():
 
         # Register handlers
         application.add_handler(CommandHandler('start', start_command))
-        application.add_handler(CommandHandler('newsession', new_session_command))
+        application.add_handler(CommandHandler('new', new_session_command))
         application.add_handler(CommandHandler('usage', usage_command))
         application.add_handler(model_conv_handler)
         application.add_handler(assistant_conv_handler)
@@ -532,6 +584,20 @@ def main():
         application.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
         )
+
+        # add command hints
+        commands = [
+            BotCommand("start", "Display list of commands"),
+            BotCommand("new", "Start new conversation"),
+            BotCommand("model", "Change AI model"),
+            BotCommand("assistant", "Change assistant mode"),
+            BotCommand("usage", "Check token usage"),
+            BotCommand("summarize", "Summarize conversation"),
+            BotCommand("sentiment", "Analyze sentiment"),
+            BotCommand("translate", "Translate text"),
+            BotCommand("explain", "Explain code")
+            ]
+        application.bot.set_my_commands(commands)
         # Start the bot
         logger.info("Starting Enhanced Claude Telegram Bot...")
         application.run_polling(drop_pending_updates=True)
