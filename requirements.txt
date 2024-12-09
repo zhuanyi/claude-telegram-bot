@@ -1,5 +1,7 @@
-anthropic>=0.12.0
+anthropic>=0.40.0
 pyTelegramBotAPI
 SpeechRecognition
 python-telegram-bot
 gunicorn
+PyPDF2
+python-docx

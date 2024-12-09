@@ -9,8 +9,12 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotComm
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
 import anthropic
 from anthropic.types import Usage
-from typing import Dict, List
+from typing import Dict, List, Any
 import xml.etree.ElementTree as ET
+import PyPDF2
+import docx
+import tempfile
+
 
 # Conversation states
 MODEL_SELECTION, CONVERSATION, ASSISTANT_SELECTION = range(3)
@@ -534,6 +538,159 @@ Please explain:
         logger.error(f"Code explanation error: {e}")
         await update.message.reply_text("Could not explain the code.")
 
+
+async def upload_document_command(update: Update, context):
+    """
+    Handle document upload command.
+    Instructs user on how to upload a document.
+    """
+    await update.message.reply_text(
+        "Upload a PDF or Word document, and I'll help you analyze it! "
+        "After uploading, you can ask questions about the document."
+    )
+
+
+async def handle_document(update: Update, context):
+    """
+    Process uploaded document and store its contents.
+    Supports PDF and DOCX files.
+    """
+    user_id = update.effective_user.id
+    document = update.document
+
+    # Validate file type
+    if not document.file_name.lower().endswith(('.pdf', '.docx')):
+        await update.message.reply_text(
+            "Please upload only PDF or Word documents."
+        )
+        return
+
+    try:
+        # Download the file
+        file = await context.bot.get_file(document.file_id)
+
+        # Create a temporary file to store the document
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(document.file_name)[1]) as temp_file:
+            await file.download_to_file(temp_file.name)
+            temp_filename = temp_file.name
+
+        # Extract text based on file type
+        if document.file_name.lower().endswith('.pdf'):
+            text = extract_text_from_pdf(temp_filename)
+        else:
+            text = extract_text_from_docx(temp_filename)
+
+        # Remove temporary file
+        os.unlink(temp_filename)
+
+        # Store document context for the user
+        session = get_or_create_session(user_id)
+        session.document_context = {
+            'filename': document.file_name,
+            'text': text
+        }
+
+        # Provide feedback and instructions
+        await update.message.reply_text(
+            f"Document '{document.file_name}' uploaded successfully! "
+            "You can now ask questions about the document. "
+            "Use /docquery to ask a specific question."
+        )
+
+    except Exception as e:
+        logger.error(f"Document upload error: {e}")
+        logger.error(traceback.format_exc())
+        await update.message.reply_text(
+            "An error occurred while processing the document. Please try again."
+        )
+
+
+def extract_text_from_pdf(pdf_path: str) -> str:
+    """
+    Extract text from a PDF file.
+    """
+    text = []
+    try:
+        with open(pdf_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            for page in reader.pages:
+                text.append(page.extract_text())
+        return "\n".join(text)
+    except Exception as e:
+        logger.error(f"PDF text extraction error: {e}")
+        return "Could not extract text from PDF"
+
+
+def extract_text_from_docx(docx_path: str) -> str:
+    """
+    Extract text from a Word document.
+    """
+    try:
+        doc = docx.Document(docx_path)
+        return "\n".join([para.text for para in doc.paragraphs if para.text])
+    except Exception as e:
+        logger.error(f"DOCX text extraction error: {e}")
+        return "Could not extract text from Word document"
+
+
+async def document_query_command(update: Update, context):
+    """
+    Allow querying the uploaded document using Claude.
+    """
+    user_id = update.effective_user.id
+    session = get_or_create_session(user_id)
+
+    # Check if a document is uploaded
+    if not hasattr(session, 'document_context') or not session.document_context:
+        await update.message.reply_text(
+            "Please upload a document first using a file upload."
+        )
+        return
+
+    # Check if query is provided
+    query = " ".join(context.args) if context.args else None
+    if not query:
+        await update.message.reply_text(
+            "Usage: /docquery <your question about the document>\n"
+            "Example: /docquery What is the main topic of this document?"
+        )
+        return
+
+    try:
+        # Initialize Anthropic client
+        client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+
+        # Prepare the query with document context
+        full_context = (
+            f"Document: {session.document_context['filename']}\n\n"
+            f"Document Text: {session.document_context['text']}\n\n"
+            f"Question: {query}"
+        )
+
+        # Generate response
+        response = client.messages.create(
+            model=session.current_model,
+            max_tokens=1000,
+            messages=[
+                {
+                    "role": "user",
+                    "content": full_context
+                }
+            ]
+        )
+
+        # Send Claude's analysis
+        analysis = response.content[0].text
+        await update.message.reply_text(analysis)
+
+    except Exception as e:
+        logger.error(f"Document query error: {e}")
+        logger.error(traceback.format_exc())
+        await update.message.reply_text(
+            "An error occurred while querying the document."
+        )
+
+
 def main():
     """Start the bot with advanced handlers."""
     try:
@@ -581,6 +738,11 @@ def main():
         application.add_handler(CommandHandler('translate', translate_command))
         application.add_handler(CommandHandler('explain', code_explain_command))
 
+        # Update UserSession to include document context
+        application.add_handler(CommandHandler('uploaddoc', upload_document_command))
+        application.add_handler(MessageHandler(filters.Document.PDF | filters.Document.DOCX, handle_document))
+        application.add_handler(CommandHandler('docquery', document_query_command))
+
         application.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
         )
@@ -595,7 +757,9 @@ def main():
             BotCommand("summarize", "Summarize conversation"),
             BotCommand("sentiment", "Analyze sentiment"),
             BotCommand("translate", "Translate text"),
-            BotCommand("explain", "Explain code")
+            BotCommand("explain", "Explain code"),
+            BotCommand("uploaddoc", "Upload docx or pdf command"),
+            BotCommand("docquery", "Query the doc uploaded")
             ]
         application.bot.set_my_commands(commands)
         # Start the bot
