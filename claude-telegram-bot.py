@@ -45,6 +45,22 @@ def setup_logging():
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
+    # Create formatters
+    std_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # Create handlers
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(std_formatter)
+    stdout_handler.setLevel(logging.INFO)
+
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setFormatter(std_formatter)
+    stderr_handler.setLevel(logging.ERROR)
+
+    # Add handlers to the logger
+    logger.addHandler(stdout_handler)
+    logger.addHandler(stderr_handler)
+
     return logger
 
 logger = setup_logging()
