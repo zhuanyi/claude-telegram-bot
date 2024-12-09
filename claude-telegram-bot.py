@@ -144,7 +144,9 @@ async def start_command(update: Update, context):
         "/summarize - Summarize conversation\n"
         "/sentiment - Analyze sentiment\n"
         "/translate - Translate text\n"
-        "/explain - Explain code"
+        "/explain - Explain code\n"
+        "/uploaddoc - Upload docx or pdf command\n"
+        "/docquery - Query the doc uploaded"
     )
 
 
