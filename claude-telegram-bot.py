@@ -53,7 +53,7 @@ logger = setup_logging()
 # Assistant Configurations Loader
 class AssistantConfigLoader:
     @staticmethod
-    def load_assistants(config_path='assistants.xml'):
+    def load_assistants(config_path='assistants_mode.xml'):
         """
         Load assistant configurations from XML
         """
