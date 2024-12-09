@@ -2,7 +2,7 @@ import os
 import logging
 import traceback
 from logging.handlers import RotatingFileHandler
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
@@ -48,7 +48,7 @@ def setup_logging():
     return logger
 
 logger = setup_logging()
-load_dotenv()
+#load_dotenv()
 
 # Assistant Configurations Loader
 class AssistantConfigLoader:
