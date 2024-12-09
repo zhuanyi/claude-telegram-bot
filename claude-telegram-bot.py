@@ -536,7 +536,7 @@ async def main():
     except Exception as e:
         logger.critical(f"Fatal error starting bot: {e}")
         logger.critical(traceback.format_exc())
-        
+
 if __name__ == '__main__':
     import asyncio
     try:
