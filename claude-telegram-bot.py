@@ -483,7 +483,7 @@ Please explain:
         logger.error(f"Code explanation error: {e}")
         await update.message.reply_text("Could not explain the code.")
 
-async def main():
+def main():
     """Start the bot with advanced handlers."""
     try:
         logger.info("Starting bot...")
@@ -531,16 +531,15 @@ async def main():
         application.add_handler(CommandHandler('explain', code_explain_command))
         # Start the bot
         logger.info("Starting Enhanced Claude Telegram Bot...")
-        await application.run_polling(drop_pending_updates=True)
+        application.run_polling(drop_pending_updates=True)
 
     except Exception as e:
         logger.critical(f"Fatal error starting bot: {e}")
         logger.critical(traceback.format_exc())
 
 if __name__ == '__main__':
-    import asyncio
     try:
-        asyncio.run(main())
+        main()
     except Exception as e:
         logger.error(f"Startup error: {str(e)}")
         logger.error(traceback.format_exc())
