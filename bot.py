@@ -11,14 +11,14 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 # Configuration and Environment Variables
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY')
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 ALLOWED_USERS = os.getenv('ALLOWED_USERS', '').split(',')
 
 
 class ClaudeTelegramBot:
     def __init__(self):
         # Initialize Anthropic Claude Client
-        self.claude_client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        self.claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
         # Initialize Telegram Bot
         self.bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)

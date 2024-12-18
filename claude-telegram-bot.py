@@ -20,12 +20,12 @@ MODEL_SELECTION, CONVERSATION, ASSISTANT_SELECTION = range(3)
 
 # Configuration and Environment Variables
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY')
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 ALLOWED_USERS = os.getenv('ALLOWED_USERS', '').split(',')
 
 # Setup logging
-LOG_DIR = '/app/logs'
-os.makedirs(LOG_DIR, exist_ok=True)
+# LOG_DIR = '/app/logs'
+# os.makedirs(LOG_DIR, exist_ok=True)
 
 def setup_logging():
     logger = logging.getLogger()
@@ -104,7 +104,7 @@ class UserSession:
     def __init__(self, user_id):
         self.user_id = user_id
         self.conversation_history: List[Dict] = []
-        self.current_model = os.getenv('DEFAULT_CLAUDE_MODEL', 'claude-3-haiku-20240307')
+        self.current_model = os.getenv('DEFAULT_CLAUDE_MODEL', 'claude-3-5-sonnet-20241022')
         self.current_assistant = 'default'
         self.token_usage = 0
 
@@ -113,9 +113,11 @@ user_sessions: Dict[int, UserSession] = {}
 
 # Available Claude models
 CLAUDE_MODELS = {
-    'Haiku': 'claude-3-haiku-20240307',
-    'Sonnet': 'claude-3-sonnet-20240207',
-    'Opus': 'claude-3-opus-20240229'
+    'Haiku-3': 'claude-3-haiku-20240307',
+    'Sonnet-3': 'claude-3-sonnet-20240229',
+    'Opus-3': 'claude-3-opus-20240229',
+    'Haiku-3-5': 'claude-3-5-haiku-20241022',
+    'Sonnet-3-5': 'claude-3-5-sonnet-20241022'
 }
 
 # Load Assistant Configurations
@@ -165,11 +167,13 @@ async def model_selection_command(update: Update, context):
     """Allow user to select Claude model."""
     keyboard = [
         [
-            InlineKeyboardButton("Haiku (Fast, Cheapest)", callback_data='model_haiku'),
-            InlineKeyboardButton("Sonnet (Balanced)", callback_data='model_sonnet')
+            InlineKeyboardButton("Haiku 3 (Fastest, Cheapest)", callback_data='model_haiku-3'),
+            InlineKeyboardButton("Sonnet 3 (Balanced)", callback_data='model_sonnet-3'),
+            InlineKeyboardButton("Haiku 3.5 (Fastest, Cheap)", callback_data='model_haiku-3-5'),
+            InlineKeyboardButton("Sonnet 3.5 (Most intelligent)", callback_data='model_sonnet-3-5'),
         ],
         [
-            InlineKeyboardButton("Opus (Most Capable)", callback_data='model_opus')
+            InlineKeyboardButton("Opus 3 (Most Capable)", callback_data='model_opus')
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -264,7 +268,7 @@ async def handle_message(update: Update, context):
 
     # Implement user authorization if needed
     if ALLOWED_USERS and str(user_id) not in ALLOWED_USERS:
-        self.bot.reply_to(message, "Unauthorized access")
+        await update.message.reply_text("Unauthorized access")
         return
     
     # Get or create user session
