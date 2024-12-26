@@ -26,6 +26,12 @@ You will also need to set up a Telegram bot, that's again a very simple process 
 4. Go through the conversation and get a name and an username for your bot, note the username has to end with 'bot' (Case insensitive).
 5. Once it is done, take note of the token (On Android you can just press and hold anywhere on the token string to copy it), note that there are two parts of the token and you will need to copy everything together including the colon (:).
 
+If you would like to restrict the bot to only be usable by the Telegram users you trust, you will also need to get user IDs of those user accounts. The user ID is a nine digit numerical ID and is different from your username. To find your userID you can start a conversation with [IDBot](https://telegram.me/myidbot) and use <code>/getid</code> command to get your ID.
+
+**Note:** When I was searching for these bots recently I do see there are quite a lot of similarly named bots showing up in the results. I would suggest to proceed with caution when it comes to those bots, especially if there are very few active users (you can see the active monthly users in the search results, and BotFather and IDBot should both have at least tens of thousands of active monthly users).
+
+Finally, you will also need to have a [Heroku](https://www.heroku.com/home) account if you would like to deploy to Heroku, note that if you are a student, Heroku is part of the [GitHub Student Developer Pack](https://education.github.com/pack) offering which would give you a credit of 13USD per month for 24 months, more details can be found [here](https://www.heroku.com/github-students).
+
 ## Deployment
 
 Currently only deployment to Heroku is available, I will add a docker deployment soon.
@@ -42,7 +48,9 @@ For Heroku deployment:
    
 3. Create Heroku app
    
-        heroku create claude-telegram-bot
+        heroku create YOUR_APP_NAME
+
+   Replace "YOUR_APP_NAME" with the name of the app desired, I used <code>claude-telegram-bot</code> since I am a very uncreative guy, but feel free to pick any name as long as it is unique wihtin your account. 
    
 4. Set configuration variables
    
@@ -61,3 +69,15 @@ For Heroku deployment:
    
         heroku ps:scale worker=1
 
+## TroubleShooting
+
+If using Heroku you can see the app logs via the cli:
+
+    heroku logs --app --YOUR_APP_NAME
+
+Replace YOUR_APP_NAME with the name of the app you've specified in the deployment section. You can also limit the number of the lines of the log by specifying the <code>-n</code> option.
+
+## Credits
+
+- [ChatGPT Telegram Bot](https://github.com/father-bot/chatgpt_telegram_bot) for giving me the inspiration to develop something similar and for giving me some tips and tricks when interacting with the Telegram bot API.
+- [Claude](https://claude.ai) for guiding me through the development, in particular, the deployment steps.
