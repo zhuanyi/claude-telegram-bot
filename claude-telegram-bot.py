@@ -301,7 +301,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = await update.message.reply_text("⌛ Generating response...")
         full_response = ""
         # Generate response using Claude
-        stream=await client.messages.create(
+        stream=client.messages.create(
             model=session.current_model,
             system=system_prompt,
             max_tokens=1000,
