@@ -286,7 +286,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         # Initialize Anthropic client
-        client = anthropic.Anthropic(api_key=anthropic_key)
+        client = anthropic.AsyncAnthropic(api_key=anthropic_key)
 
         # Get assistant prompt if exists
         assistant_details = ASSISTANTS.get(session.current_assistant, {})
@@ -301,26 +301,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = await update.message.reply_text("⌛ Generating response...")
         full_response = ""
         # Generate response using Claude
-        stream=client.messages.create(
+        async with client.messages.stream(
             model=session.current_model,
             system=system_prompt,
             max_tokens=1000,
-            messages=messages,
-            stream=True
-        )
-        async for chunk in stream:
-            await sleep(0.2)  # Prevent message edit rate limits
-            if chunk.content:  # Check for actual content
-                full_response += chunk.content[0].text
-                # Update message incrementally
-                if len(full_response) % 3 == 0:  # Update every 3 tokens
-                    await message.edit_text(full_response)
-                    # Maintain typing indicator
-                    await context.bot.send_chat_action(
-                        chat_id=update.effective_chat.id,
-                        action=constants.ChatAction.TYPING
-                    )
-
+            messages=messages
+        )as stream:
+            # Iterate through stream events correctly
+            async for event in stream:
+                if event.type == "content_block_delta":
+                    if event.delta.text:
+                        full_response += event.delta.text
+                        # Update message every 3 characters for smoothness
+                        if len(full_response) % 3 == 0:
+                            await message.edit_text(full_response)
+                            # Maintain typing indicator
+                            await context.bot.send_chat_action(
+                                chat_id=update.effective_chat.id,
+                                action=constants.ChatAction.TYPING
+                            )
         await message.edit_text(
             f"```\n{full_response}\n```",  # Preserve formatting
             parse_mode="MarkdownV2"
