@@ -301,19 +301,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = await update.message.reply_text("⌛ Generating response...")
         full_response = ""
         # Generate response using Claude
-        async with client.messages.stream(
+        stream=await client.messages.create(
             model=session.current_model,
             system=system_prompt,
             max_tokens=1000,
-            messages=messages
-        ) as stream:
-            async for chunk in stream:
-                await sleep(0.2)  # Prevent message edit rate limits
-                if chunk.content:  # Check for actual content
-                    full_response += chunk.content[0].text
+            messages=messages,
+            stream=True
+        )
+        async for chunk in stream:
+            await sleep(0.2)  # Prevent message edit rate limits
+            if chunk.content:  # Check for actual content
+                full_response += chunk.content[0].text
+                # Update message incrementally
+                if len(full_response) % 3 == 0:  # Update every 3 tokens
                     await message.edit_text(full_response)
-                    # Renew typing indicator every 4 seconds
-                    await context.bot.send_chat_action(...)
+                    # Maintain typing indicator
+                    await context.bot.send_chat_action(
+                        chat_id=update.effective_chat.id,
+                        action=constants.ChatAction.TYPING
+                    )
 
         await message.edit_text(
             f"```\n{full_response}\n```",  # Preserve formatting
