@@ -5,3 +5,4 @@ python-telegram-bot
 gunicorn
 PyPDF2
 python-docx
+aiohttp>=3.9.0

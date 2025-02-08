@@ -1,18 +1,15 @@
 import os, sys
 import logging
 import traceback
-import datetime
-from logging.handlers import RotatingFileHandler
-#from dotenv import load_dotenv
-import telegram
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand,constants
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler, ContextTypes
 import anthropic
 from typing import Dict, List, Any
 import xml.etree.ElementTree as ET
 import PyPDF2
 import docx
 import tempfile
+from asyncio import sleep
 
 
 # Conversation states
@@ -261,7 +258,8 @@ async def assistant_button_callback(update: Update, context):
     )
     return ConversationHandler.END
 
-async def handle_message(update: Update, context):
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle incoming messages with conversation context."""
     user_id = update.effective_user.id
     user_message = update.message.text
@@ -283,7 +281,7 @@ async def handle_message(update: Update, context):
     # Show typing indicator
     await context.bot.send_chat_action(
         chat_id=update.effective_chat.id, 
-        action=telegram.constants.ChatAction.TYPING
+        action=constants.ChatAction.TYPING
     )
 
     try:
@@ -299,33 +297,33 @@ async def handle_message(update: Update, context):
             {"role": "user", "content": user_message}
         ]
 
+        # Create initial message
+        message = await update.message.reply_text("⌛ Generating response...")
+        full_response = ""
         # Generate response using Claude
-        response = client.messages.create(
+        async with client.messages.stream(
             model=session.current_model,
             system=system_prompt,
             max_tokens=1000,
             messages=messages
-        )
+        ) as stream:
+            async for chunk in stream:
+                await sleep(0.2)  # Prevent message edit rate limits
+                if chunk.content:  # Check for actual content
+                    full_response += chunk.content[0].text
+                    await message.edit_text(full_response)
+                    # Renew typing indicator every 4 seconds
+                    await context.bot.send_chat_action(...)
 
-        # Extract Claude's response
-        claude_response = response.content[0].text
-        
-        # Update conversation history and token usage
-        session.conversation_history.append(
-            {"role": "user", "content": user_message}
+        await message.edit_text(
+            f"```\n{full_response}\n```",  # Preserve formatting
+            parse_mode="MarkdownV2"
         )
-        session.conversation_history.append(
-            {"role": "assistant", "content": claude_response}
-        )
-        session.token_usage += response.usage.input_tokens + response.usage.output_tokens
-
-        # Send response
-        await update.message.reply_text(claude_response)
 
     except Exception as e:
         logger.error(f"Error in message handling: {e}")
         logger.error(traceback.format_exc())
-        await update.message.reply_text("An error occurred while processing your message.")
+        await message.edit_text(f"⚠️ Error: An error occurred while processing your message. {str(e)}")
 
 # Include previously defined advanced feature commands
 async def summarize_command(update: Update, context):
@@ -452,6 +450,11 @@ Please provide:
         await update.message.reply_text("Could not perform translation.")
 
 async def code_explain_command(update: Update, context):
+    """Handle incoming messages with conversation context."""
+    user_id = update.effective_user.id
+    # Get or create user session
+    session = get_or_create_session(user_id)
+
     """Explain a piece of code or provide code-related assistance."""
     if len(context.args) < 2:
         await update.message.reply_text(
