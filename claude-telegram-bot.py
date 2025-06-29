@@ -123,12 +123,10 @@ user_sessions: Dict[int, UserSession] = {}
 
 # Available Claude models
 CLAUDE_MODELS = {
-    'Haiku-3': 'claude-3-haiku-20240307',
-    'Sonnet-3': 'claude-3-sonnet-20240229',
-    'Opus-3': 'claude-3-opus-20240229',
-    'Haiku-3-5': 'claude-3-5-haiku-20241022',
-    'Sonnet-3-5': 'claude-3-5-sonnet-20241022',
-    'Opus-3-5': 'claude-3-5-opus-20241022'
+    'Haiku-3-5': 'claude-3-5-haiku-latest',
+    'Sonnet-3-7': 'claude-3-7-sonnet-latest',
+    'Sonnet-4': 'claude-sonnet-4-20250514',
+    'Opus-4': 'claude-opus-4-20250514'
 }
 
 # Fetch available models from Anthropic API
@@ -194,14 +192,12 @@ async def model_selection_command(update: Update, context):
     """Allow user to select Claude model."""
     keyboard = [
         [
-            InlineKeyboardButton("Haiku 3 (Fastest, Cheapest)", callback_data='model_haiku-3'),
-            InlineKeyboardButton("Sonnet 3 (Balanced)", callback_data='model_sonnet-3'),
             InlineKeyboardButton("Haiku 3.5 (Fastest, Cheap)", callback_data='model_haiku-3-5'),
-            InlineKeyboardButton("Sonnet 3.5 (Most intelligent)", callback_data='model_sonnet-3-5'),
+            InlineKeyboardButton("Sonnet 3.7 (Most intelligent)", callback_data='model_sonnet-3-7'),
         ],
         [
-            InlineKeyboardButton("Opus 3 (Most Capable)", callback_data='model_opus'),
-            InlineKeyboardButton("Opus 3.5 (Most Capable)", callback_data='model_opus-3-5')
+            InlineKeyboardButton("Sonnet 4 (Most Capable)", callback_data='model_sonnet-4'),
+            InlineKeyboardButton("Opus 4 (Most Capable)", callback_data='model_opus-4')
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -223,7 +219,7 @@ async def model_button_callback(update: Update, context):
     # Extract selected model
     selected_model = query.data.split('_')[1]
     model_key = selected_model.capitalize()
-    session.current_model = CLAUDE_MODELS.get(model_key, CLAUDE_MODELS['Haiku-3'])
+    session.current_model = CLAUDE_MODELS.get(model_key, CLAUDE_MODELS['Haiku-3-5'])
 
     display_name = model_key.replace('-', ' ')
 
