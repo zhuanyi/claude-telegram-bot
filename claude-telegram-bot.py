@@ -129,21 +129,21 @@ CLAUDE_MODELS = {
     'Opus-4': 'claude-opus-4-20250514'
 }
 
-# Fetch available models from Anthropic API
-def fetch_available_models() -> List[str]:
-    """Retrieve list of Claude models via the API."""
-    try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        models = client.models.list()
-        names = [m.name for m in models]
-        logger.info("Available models: %s", ", ".join(names))
-        return names
-    except Exception as e:
-        logger.error(f"Failed to fetch models list: {e}")
-        return []
+# # Fetch available models from Anthropic API
+# def fetch_available_models() -> List[str]:
+#     """Retrieve list of Claude models via the API."""
+#     try:
+#         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+#         models = client.models.list()
+#         names = [m.name for m in models]
+#         logger.info("Available models: %s", ", ".join(names))
+#         return names
+#     except Exception as e:
+#         logger.error(f"Failed to fetch models list: {e}")
+#         return []
 
 # Obtain available model list at startup for reference
-AVAILABLE_MODEL_NAMES = fetch_available_models()
+#AVAILABLE_MODEL_NAMES = fetch_available_models()
 
 # Load Assistant Configurations
 ASSISTANTS = AssistantConfigLoader.load_assistants()
