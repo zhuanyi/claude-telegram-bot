@@ -68,6 +68,16 @@ def setup_logging():
 logger = setup_logging()
 #load_dotenv()
 
+# Utility to avoid wrapping entire responses in code blocks
+def strip_outer_code_block(text: str) -> str:
+    """Remove a surrounding triple backtick block if it encloses the entire text."""
+    stripped = text.strip()
+    if stripped.startswith('```') and stripped.endswith('```') and stripped.count('```') == 2:
+        # Drop first and last line containing the backticks
+        body = stripped.split('\n')
+        return '\n'.join(body[1:-1])
+    return text
+
 # Assistant Configurations Loader
 class AssistantConfigLoader:
     @staticmethod
@@ -105,17 +115,35 @@ class UserSession:
         self.current_assistant = 'default'
         self.token_usage = 0
 
+# Limit the number of conversation exchanges stored per user
+MAX_HISTORY_LENGTH = 10
+
 # Global session storage
 user_sessions: Dict[int, UserSession] = {}
 
 # Available Claude models
 CLAUDE_MODELS = {
-    'Haiku-3': 'claude-3-haiku-20240307',
-    'Sonnet-3': 'claude-3-sonnet-20240229',
-    'Opus-3': 'claude-3-opus-20240229',
-    'Haiku-3-5': 'claude-3-5-haiku-20241022',
-    'Sonnet-3-5': 'claude-3-5-sonnet-20241022'
+    'Haiku-3-5': 'claude-3-5-haiku-latest',
+    'Sonnet-3-7': 'claude-3-7-sonnet-latest',
+    'Sonnet-4': 'claude-sonnet-4-20250514',
+    'Opus-4': 'claude-opus-4-20250514'
 }
+
+# Fetch available models from Anthropic API
+def fetch_available_models() -> List[str]:
+    """Retrieve list of Claude models via the API."""
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        models = client.models.list()
+        names = [m.name for m in models]
+        logger.info("Available models: %s", ", ".join(names))
+        return names
+    except Exception as e:
+        logger.error(f"Failed to fetch models list: {e}")
+        return []
+
+# Obtain available model list at startup for reference
+AVAILABLE_MODEL_NAMES = fetch_available_models()
 
 # Load Assistant Configurations
 ASSISTANTS = AssistantConfigLoader.load_assistants()
@@ -164,13 +192,12 @@ async def model_selection_command(update: Update, context):
     """Allow user to select Claude model."""
     keyboard = [
         [
-            InlineKeyboardButton("Haiku 3 (Fastest, Cheapest)", callback_data='model_haiku-3'),
-            InlineKeyboardButton("Sonnet 3 (Balanced)", callback_data='model_sonnet-3'),
             InlineKeyboardButton("Haiku 3.5 (Fastest, Cheap)", callback_data='model_haiku-3-5'),
-            InlineKeyboardButton("Sonnet 3.5 (Most intelligent)", callback_data='model_sonnet-3-5'),
+            InlineKeyboardButton("Sonnet 3.7 (Most intelligent)", callback_data='model_sonnet-3-7'),
         ],
         [
-            InlineKeyboardButton("Opus 3 (Most Capable)", callback_data='model_opus')
+            InlineKeyboardButton("Sonnet 4 (Most Capable)", callback_data='model_sonnet-4'),
+            InlineKeyboardButton("Opus 4 (Most Capable)", callback_data='model_opus-4')
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -191,11 +218,13 @@ async def model_button_callback(update: Update, context):
 
     # Extract selected model
     selected_model = query.data.split('_')[1]
-    session.current_model = CLAUDE_MODELS.get(selected_model.capitalize(),
-                                              CLAUDE_MODELS['Haiku'])
+    model_key = selected_model.capitalize()
+    session.current_model = CLAUDE_MODELS.get(model_key, CLAUDE_MODELS['Haiku-3-5'])
+
+    display_name = model_key.replace('-', ' ')
 
     await query.edit_message_text(
-        f"Model changed to Claude-3-{selected_model.capitalize()}. "
+        f"Model changed to {display_name}. "
         "You can now continue your conversation."
     )
     return ConversationHandler.END
@@ -320,9 +349,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 chat_id=update.effective_chat.id,
                                 action=constants.ChatAction.TYPING
                             )
+        # Remove wrapping code block if the entire reply is fenced
+        formatted_response = strip_outer_code_block(full_response)
+
+        # Update conversation history for context awareness
+        session.conversation_history.append({"role": "user", "content": user_message})
+        session.conversation_history.append({"role": "assistant", "content": formatted_response})
+        if len(session.conversation_history) > MAX_HISTORY_LENGTH:
+            session.conversation_history = session.conversation_history[-MAX_HISTORY_LENGTH:]
+
+        # Display response with original formatting so that only code or
+        # formulas appear in blocks while normal text remains plain
         await message.edit_text(
-            f"```\n{full_response}\n```",  # Preserve formatting
-            parse_mode="MarkdownV2"
+            formatted_response,
+            parse_mode=constants.ParseMode.MARKDOWN
         )
 
     except Exception as e:
