@@ -19,7 +19,7 @@ class BotConfig:
     anthropic_api_key: str
     
     # Optional configuration
-    allowed_users: List[str]
+    allowed_users: List[int]
     default_claude_model: str
     max_history_length: int
     model_cache_duration_hours: int
@@ -44,7 +44,7 @@ class BotConfig:
             raise ValueError("ANTHROPIC_API_KEY environment variable is required")
         
         allowed_users_str = os.getenv('ALLOWED_USERS', '')
-        allowed_users = [user.strip() for user in allowed_users_str.split(',') if user.strip()]
+        allowed_users = [int(user.strip()) for user in allowed_users_str.split(',') if user.strip()]
         
         return cls(
             telegram_bot_token=telegram_token,
