@@ -28,21 +28,22 @@ COPY src/ ./src/
 COPY main.py .
 COPY assistants_mode.xml .
 
-# Create logs directory
-RUN mkdir -p logs
-
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
 USER app
 
-# Heroku sets PORT environment variable, but we use it for bot (not web server)
-# The bot doesn't need to bind to Heroku's PORT since it's not a web server
-EXPOSE 8000
+# Create logs directory and database file with proper permissions
+RUN mkdir -p logs \
+    && touch bot_data.db \
+    && chown -R app:app /app \
+    && chmod 755 logs \
+    && chmod 644 bot_data.db
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD python -c "import sys; sys.exit(0)"
 
 # Run the application
+USER app
 CMD ["python", "main.py"]

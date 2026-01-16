@@ -58,7 +58,7 @@ class BotHandlers:
         """Check if a user is authorized to use the bot."""
         if not self.config.allowed_users:
             return True  # No restrictions if no allowed users specified
-        return str(user_id) in self.config.allowed_users
+        return int(user_id) in self.config.allowed_users
     
     @telegram_retry(max_retries=3, base_delay=1.0)
     async def _send_message_with_retry(self, update: Update, text: str, **kwargs) -> Any:
@@ -104,8 +104,7 @@ class BotHandlers:
             "/explain - Explain code\n"
             "/uploaddoc - Upload document\n"
             "/docquery - Query uploaded document\n\n"
-            "💬 Just send me a message to start chatting!",
-            parse_mode=constants.ParseMode.MARKDOWN
+            "💬 Just send me a message to start chatting!"
         )
     
     async def new_session_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
