@@ -104,7 +104,8 @@ class BotHandlers:
             "/explain - Explain code\n"
             "/uploaddoc - Upload document\n"
             "/docquery - Query uploaded document\n\n"
-            "💬 Just send me a message to start chatting!"
+            "💬 Just send me a message to start chatting!",
+            parse_mode=constants.ParseMode.MARKDOWN_V2
         )
     
     async def new_session_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -218,14 +219,14 @@ class BotHandlers:
                 await self._edit_message_with_retry(
                     processing_msg, 
                     status_message,
-                    parse_mode=constants.ParseMode.MARKDOWN
+                    parse_mode=constants.ParseMode.MARKDOWN_V2
                 )
                 
         except aiohttp.ClientError as e:
             await self._edit_message_with_retry(
                 processing_msg,
                 f"❌ **Network Error**\n\nFailed to connect to Claude API:\n`{str(e)}`",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
         except Exception as e:
             log_error_with_context(logger, "Error in status command", e)
@@ -275,7 +276,7 @@ class BotHandlers:
             await update.message.reply_text(
                 "🤖 **Select a Claude AI model:**",
                 reply_markup=reply_markup,
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return ConversationStates.MODEL_SELECTION
             
@@ -314,7 +315,7 @@ class BotHandlers:
             await query.edit_message_text(
                 f"✅ **Model changed to {display_name}**\n\n"
                 "You can now continue your conversation.",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return ConversationHandler.END
             
@@ -355,7 +356,7 @@ class BotHandlers:
             f"💰 **Estimated Cost:** ${usage_stats['total_cost']:.4f}\n\n"
             f"📄 **Document:** {'✅ ' + session_stats['document_filename'] if session_stats['has_document'] else '❌ None'}\n"
             f"🔄 **Models Cache:** {cache_status}",
-            parse_mode=constants.ParseMode.MARKDOWN
+            parse_mode=constants.ParseMode.MARKDOWN_V2
         )
     
     async def assistant_selection_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -394,7 +395,7 @@ class BotHandlers:
             await update.message.reply_text(
                 "🎭 **Select an Assistant Mode:**", 
                 reply_markup=reply_markup,
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return ConversationStates.ASSISTANT_SELECTION
             
@@ -433,7 +434,7 @@ class BotHandlers:
                 f"✅ **Assistant mode changed to {selected_assistant}**\n\n"
                 f"📝 **Description:** {assistant_config.get('description', 'No description')}\n\n"
                 "You can now continue your conversation.",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return ConversationHandler.END
             
@@ -566,7 +567,7 @@ class BotHandlers:
                 await self._edit_message_with_retry(
                     message,
                     final_content,
-                    parse_mode=constants.ParseMode.MARKDOWN
+                    parse_mode=constants.ParseMode.MARKDOWN_V2
                 )
             
         except Exception as e:
@@ -613,7 +614,7 @@ class BotHandlers:
             summary = response.content[0].text
             await update.message.reply_text(
                 f"📋 **Conversation Summary:**\n\n{summary}",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
@@ -639,7 +640,7 @@ class BotHandlers:
             await update.message.reply_text(
                 "❌ Please provide text to analyze or have an active conversation.\n\n"
                 "**Usage:** `/sentiment <text to analyze>`",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
         
@@ -668,7 +669,7 @@ Please provide:
             sentiment_analysis = response.content[0].text
             await update.message.reply_text(
                 f"🎭 **Sentiment Analysis:**\n\n{sentiment_analysis}",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
@@ -687,7 +688,7 @@ Please provide:
             await update.message.reply_text(
                 "❌ **Usage:** `/translate <target_language> <text>`\n\n"
                 "**Example:** `/translate Spanish Hello, how are you?`",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
         
@@ -718,7 +719,7 @@ Please provide:
             translation = response.content[0].text
             await update.message.reply_text(
                 f"🌍 **Translation to {target_language}:**\n\n{translation}",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
@@ -737,7 +738,7 @@ Please provide:
             await update.message.reply_text(
                 "❌ **Usage:** `/explain <programming_language> <code>`\n\n"
                 "**Example:** `/explain Python def fibonacci(n):`",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
         
@@ -771,7 +772,7 @@ Please explain:
             code_explanation = response.content[0].text
             await update.message.reply_text(
                 f"💻 **Code Explanation ({language}):**\n\n{code_explanation}",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
@@ -791,7 +792,7 @@ Please explain:
             "Upload a PDF or Word document, and I'll help you analyze it! "
             "After uploading, you can ask questions about the document using `/docquery`.\n\n"
             "**Supported formats:** PDF, DOCX",
-            parse_mode=constants.ParseMode.MARKDOWN
+            parse_mode=constants.ParseMode.MARKDOWN_V2
         )
     
     async def handle_document(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -809,7 +810,7 @@ Please explain:
                 f"❌ **Unsupported file type**\n\n"
                 f"Please upload only PDF or Word documents.\n"
                 f"**Received:** {document.file_name}",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
         
@@ -856,7 +857,7 @@ Please explain:
                 f"📄 **File:** {document.file_name}\n"
                 f"📊 **Size:** {len(text)} characters\n\n"
                 f"You can now ask questions about the document using `/docquery <your question>`",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
@@ -883,7 +884,7 @@ Please explain:
             await update.message.reply_text(
                 "❌ **No document uploaded**\n\n"
                 "Please upload a document first using the file upload feature.",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
         
@@ -897,7 +898,7 @@ Please explain:
             await update.message.reply_text(
                 "❌ **Usage:** `/docquery <your question about the document>`\n\n"
                 "**Example:** `/docquery What is the main topic of this document?`",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
         
@@ -928,7 +929,7 @@ Please explain:
             analysis = response.content[0].text
             await update.message.reply_text(
                 f"📄 **Document Analysis:**\n\n{analysis}",
-                parse_mode=constants.ParseMode.MARKDOWN
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
