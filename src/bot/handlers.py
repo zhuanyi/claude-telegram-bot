@@ -589,16 +589,12 @@ class BotHandlers:
             # Display final response
             final_content = formatted_response[:4000]  # Telegram limit
             if final_content != last_sent_content:
-                await self._edit_message_with_retry(
-                    message,
-                    final_content,
-                    parse_mode=constants.ParseMode.MARKDOWN_V2
-                )
-            
+                await self._edit_safe_markdown(message, final_content)
+
         except Exception as e:
             log_error_with_context(logger, "Error in message handling", e)
             error_msg = safe_format_exception(e)
-            await self._edit_message_with_retry(message, f"❌ **Error:** {error_msg}")
+            await self._edit_message_with_retry(message, f"❌ Error: {error_msg}")
 
     async def summarize_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Summarize the previous conversation."""
@@ -637,12 +633,8 @@ class BotHandlers:
             )
             
             summary = response.content[0].text
+            await self._send_safe_markdown(update, f"📋 *Conversation Summary:*\n\n{summary}")
 
-            await update.message.reply_text(
-                f"📋 *Conversation Summary:*\n\n{summary}",
-                parse_mode=constants.ParseMode.MARKDOWN_V2
-            )
-            
         except Exception as e:
             log_error_with_context(logger, "Summarization error", e)
             await update.message.reply_text("❌ Could not generate summary\\.")
@@ -693,12 +685,8 @@ Please provide:
             )
             
             sentiment_analysis = response.content[0].text
+            await self._send_safe_markdown(update, f"🎭 *Sentiment Analysis:*\n\n{sentiment_analysis}")
 
-            await update.message.reply_text(
-                f"🎭 *Sentiment Analysis:*\n\n{sentiment_analysis}",
-                parse_mode=constants.ParseMode.MARKDOWN_V2
-            )
-            
         except Exception as e:
             log_error_with_context(logger, "Sentiment analysis error", e)
             await update.message.reply_text("❌ Could not perform sentiment analysis\\.")
@@ -745,12 +733,8 @@ Please provide:
             
             translation = response.content[0].text
             escaped_language = target_language.replace('_', '\\_')
+            await self._send_safe_markdown(update, f"🌍 *Translation to {escaped_language}:*\n\n{translation}");
 
-            await update.message.reply_text(
-                f"🌍 *Translation to {escaped_language}:*\n\n{translation}",
-                parse_mode=constants.ParseMode.MARKDOWN_V2
-            )
-            
         except Exception as e:
             log_error_with_context(logger, "Translation error", e)
             await update.message.reply_text("❌ Could not perform translation\\.")
@@ -800,12 +784,8 @@ Please explain:
             
             code_explanation = response.content[0].text
             escaped_language = language.replace('_', '\\_')
+            await self._send_safe_markdown(update, f"💻 *Code Explanation \\({escaped_language}\\):*\n\n{code_explanation}");
 
-            await update.message.reply_text(
-                f"💻 *Code Explanation \\({escaped_language}\\):*\n\n{code_explanation}",
-                parse_mode=constants.ParseMode.MARKDOWN_V2
-            )
-            
         except Exception as e:
             log_error_with_context(logger, "Code explanation error", e)
             await update.message.reply_text("❌ Could not explain the code\\.")
@@ -961,10 +941,7 @@ Please explain:
             # Send Claude's analysis
             analysis = response.content[0].text
             # Send header with formatting, then chunk the body
-            await update.message.reply_text(
-                "📄 *Document Analysis:*",
-                parse_mode=constants.ParseMode.MARKDOWN_V2
-            )
+            await self._send_safe_markdown(update, "📄 *Document Analysis:*")
             await self._send_long_markdown(update, analysis)
 
         except Exception as e:
@@ -982,9 +959,31 @@ Please explain:
             escaped = escaped.replace(ch, '\\' + ch)
         return escaped
 
+    async def _send_safe_markdown(self, update: Update, text: str) -> None:
+        """Send text as Markdown V2, fallback to plain text if parsing fails."""
+        try:
+            await update.message.reply_text(text, parse_mode=constants.ParseMode.MARKDOWN_V2)
+        except Exception as e:
+            logger.warning(f"Markdown V2 parsing failed, sending as plain text: {e}")
+            try:
+                await update.message.reply_text(text)
+            except Exception as e2:
+                logger.error(f"Failed to send message as plain text: {e2}")
+
+    async def _edit_safe_markdown(self, message, text: str) -> None:
+        """Edit message as Markdown V2, fallback to plain text if parsing fails."""
+        try:
+            await message.edit_text(text, parse_mode=constants.ParseMode.MARKDOWN_V2)
+        except Exception as e:
+            logger.warning(f"Markdown V2 parsing failed, editing as plain text: {e}")
+            try:
+                await message.edit_text(text)
+            except Exception as e2:
+                logger.error(f"Failed to edit message as plain text: {e2}")
+
     async def _send_long_markdown(self, update: Update, text: str, chunk_size: int = 3800) -> None:
         """
-        Send a long Markdown V2 message by splitting into safe chunks.
+        Send a long message by splitting into safe chunks with Markdown V2 fallback.
         chunk_size < 4096 to leave room for prefix/newlines.
         """
         if not text:
@@ -999,6 +998,6 @@ Please explain:
             if newline_pos != -1 and newline_pos > start:
                 end = newline_pos + 1
             chunk = text[start:end]
-            await update.message.reply_text(chunk, parse_mode=constants.ParseMode.MARKDOWN_V2)
+            await self._send_safe_markdown(update, chunk)
             start = end
 
