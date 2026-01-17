@@ -90,21 +90,21 @@ class BotHandlers:
         self.session_manager.clear_conversation_history(user_id)
         
         await update.message.reply_text(
-            "🤖 Hi! I'm a Claude-powered Telegram bot.\n\n"
-            "📋 **Available Commands:**\n"
-            "/new - Start new conversation\n"
-            "/model - Change AI model\n"
-            "/assistant - Change assistant mode\n"
-            "/usage - Check token usage\n"
-            "/status - Check Claude API status\n"
-            "/refresh_models - Refresh available models\n"
-            "/summarize - Summarize conversation\n"
-            "/sentiment - Analyze sentiment\n"
-            "/translate - Translate text\n"
-            "/explain - Explain code\n"
-            "/uploaddoc - Upload document\n"
-            "/docquery - Query uploaded document\n\n"
-            "💬 Just send me a message to start chatting!",
+            "🤖 Hi\\! I'm a Claude\\-powered Telegram bot\\.\n\n"
+            "📋 *Available Commands:*\n"
+            "/new \\- Start new conversation\n"
+            "/model \\- Change AI model\n"
+            "/assistant \\- Change assistant mode\n"
+            "/usage \\- Check token usage\n"
+            "/status \\- Check Claude API status\n"
+            "/refresh\\_models \\- Refresh available models\n"
+            "/summarize \\- Summarize conversation\n"
+            "/sentiment \\- Analyze sentiment\n"
+            "/translate \\- Translate text\n"
+            "/explain \\- Explain code\n"
+            "/uploaddoc \\- Upload document\n"
+            "/docquery \\- Query uploaded document\n\n"
+            "💬 Just send me a message to start chatting\\!",
             parse_mode=constants.ParseMode.MARKDOWN_V2
         )
     
@@ -141,14 +141,17 @@ class BotHandlers:
             # Fetch fresh models
             models = self.model_manager.fetch_available_models()
             
+            # Escape model names for Markdown V2
+            model_list = "\n".join([f"• {name.replace('-', '\\-').replace('.', '\\.')}" for name in models.keys()])
+
             await update.message.reply_text(
-                f"🔄 Refreshed model list. Found {len(models)} available models:\n\n" + 
-                "\n".join([f"• {name}" for name in models.keys()])
+                f"🔄 Refreshed model list\\. Found {len(models)} available models:\n\n" +
+                model_list
             )
         except Exception as e:
             log_error_with_context(logger, "Error refreshing models", e)
-            await update.message.reply_text("❌ Failed to refresh models. Please try again later.")
-    
+            await update.message.reply_text("❌ Failed to refresh models\\. Please try again later\\.")
+
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Query and display Claude API status information."""
         user_id = update.effective_user.id
@@ -158,8 +161,8 @@ class BotHandlers:
             return
         
         # Show processing message
-        processing_msg = await self._send_message_with_retry(update, "🔍 Checking Claude API status...")
-        
+        processing_msg = await self._send_message_with_retry(update, "🔍 Checking Claude API status\\.\\.\\.")
+
         try:
             # Query Claude API status endpoint
             async with aiohttp.ClientSession() as session:
@@ -171,49 +174,51 @@ class BotHandlers:
                 
                 async with session.get('https://api.anthropic.com/v1/models', headers=headers) as response:
                     if response.status == 200:
-                        api_status = "🟢 **Online**"
+                        api_status = "🟢 *Online*"
                         response_time = response.headers.get('x-response-time', 'N/A')
                     elif response.status == 429:
-                        api_status = "🟡 **Rate Limited**"
+                        api_status = "🟡 *Rate Limited*"
                         response_time = "N/A"
                     elif response.status >= 500:
-                        api_status = "🔴 **Server Issues**"
+                        api_status = "🔴 *Server Issues*"
                         response_time = "N/A"
                     else:
-                        api_status = f"🟡 **Status {response.status}**"
+                        api_status = f"🟡 *Status {response.status}*"
                         response_time = "N/A"
                 
                 # Get available models
                 try:
                     available_models = self.model_manager.fetch_available_models()
-                    models_status = f"✅ **{len(available_models)} models available**"
-                    model_list = "\n".join([f"• {name}" for name in list(available_models.keys())[:10]])
+                    models_status = f"✅ *{len(available_models)} models available*"
+                    model_list = "\n".join([f"• {name.replace('-', '\\-').replace('.', '\\.')}" for name in list(available_models.keys())[:10]])
                     if len(available_models) > 10:
-                        model_list += f"\n• ... and {len(available_models) - 10} more"
+                        model_list += f"\n• \\.\\.\\. and {len(available_models) - 10} more"
                 except Exception as e:
-                    models_status = "❌ **Failed to fetch models**"
-                    model_list = f"Error: {str(e)[:100]}"
-                
+                    models_status = "❌ *Failed to fetch models*"
+                    error_str = str(e)[:100].replace('_', '\\_').replace('.', '\\.').replace('-', '\\-')
+                    model_list = f"Error: {error_str}"
+
                 # Get current session info
                 user = update.effective_user
                 user_session = self.session_manager.get_or_create_session(
                     user_id, user.username, user.first_name, user.last_name
                 )
-                current_model = self.model_manager.get_model_display_name(user_session.current_model)
-                
+                current_model = self.model_manager.get_model_display_name(user_session.current_model).replace('-', '\\-').replace('.', '\\.')
+                assistant_name = user_session.current_assistant.replace('_', '\\_')
+
                 # Get cache status
-                cache_status = "✅ **Valid**" if self.model_manager.is_cache_valid() else "❌ **Expired**"
-                
+                cache_status = "✅ *Valid*" if self.model_manager.is_cache_valid() else "❌ *Expired*"
+
                 status_message = (
-                    f"📊 **Claude API Status Report**\n\n"
-                    f"🌐 **API Status:** {api_status}\n"
-                    f"⏱️ **Response Time:** {response_time}ms\n\n"
-                    f"🤖 **Models Status:** {models_status}\n"
-                    f"🔄 **Models Cache:** {cache_status}\n\n"
-                    f"👤 **Your Current Settings:**\n"
-                    f"• **Model:** {current_model}\n"
-                    f"• **Assistant:** {user_session.current_assistant}\n\n"
-                    f"📋 **Available Models:**\n{model_list}"
+                    f"📊 *Claude API Status Report*\n\n"
+                    f"🌐 *API Status:* {api_status}\n"
+                    f"⏱️ *Response Time:* {response_time}ms\n\n"
+                    f"🤖 *Models Status:* {models_status}\n"
+                    f"🔄 *Models Cache:* {cache_status}\n\n"
+                    f"👤 *Your Current Settings:*\n"
+                    f"• *Model:* {current_model}\n"
+                    f"• *Assistant:* {assistant_name}\n\n"
+                    f"📋 *Available Models:*\n{model_list}"
                 )
                 
                 await self._edit_message_with_retry(
@@ -223,9 +228,10 @@ class BotHandlers:
                 )
                 
         except aiohttp.ClientError as e:
+            error_str = str(e).replace('_', '\\_').replace('.', '\\.').replace('-', '\\-').replace('(', '\\(').replace(')', '\\)')
             await self._edit_message_with_retry(
                 processing_msg,
-                f"❌ **Network Error**\n\nFailed to connect to Claude API:\n`{str(e)}`",
+                f"❌ *Network Error*\n\nFailed to connect to Claude API:\n`{error_str}`",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
         except Exception as e:
@@ -233,7 +239,7 @@ class BotHandlers:
             error_msg = safe_format_exception(e)
             await self._edit_message_with_retry(
                 processing_msg,
-                f"❌ **Error checking status:** {error_msg}"
+                f"❌ *Error checking status:* {error_msg}"
             )
     
     async def model_selection_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -249,7 +255,7 @@ class BotHandlers:
             available_models = self.model_manager.fetch_available_models()
             
             if not available_models:
-                await update.message.reply_text("❌ No models available. Please try again later.")
+                await update.message.reply_text("❌ No models available\\. Please try again later\\.")
                 return ConversationHandler.END
             
             # Create keyboard dynamically
@@ -274,7 +280,7 @@ class BotHandlers:
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
-                "🤖 **Select a Claude AI model:**",
+                "🤖 *Select a Claude AI model:*",
                 reply_markup=reply_markup,
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
@@ -282,7 +288,7 @@ class BotHandlers:
             
         except Exception as e:
             log_error_with_context(logger, "Error in model selection", e)
-            await update.message.reply_text("❌ Error loading models. Please try again later.")
+            await update.message.reply_text("❌ Error loading models\\. Please try again later\\.")
             return ConversationHandler.END
     
     async def model_button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -310,18 +316,18 @@ class BotHandlers:
             self.session_manager.update_user_preferences(user_id, model=model_id)
             
             # Get display name for confirmation
-            display_name = self.model_manager.get_model_display_name(model_id)
-            
+            display_name = self.model_manager.get_model_display_name(model_id).replace('-', '\\-').replace('.', '\\.')
+
             await query.edit_message_text(
-                f"✅ **Model changed to {display_name}**\n\n"
-                "You can now continue your conversation.",
+                f"✅ *Model changed to {display_name}*\n\n"
+                "You can now continue your conversation\\.",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return ConversationHandler.END
             
         except Exception as e:
             log_error_with_context(logger, "Error in model selection callback", e)
-            await query.edit_message_text("❌ Error changing model. Please try again.")
+            await query.edit_message_text("❌ Error changing model\\. Please try again\\.")
             return ConversationHandler.END
     
     async def usage_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -336,26 +342,35 @@ class BotHandlers:
         session = self.session_manager.get_or_create_session(
             user_id, user.username, user.first_name, user.last_name
         )
-        display_name = self.model_manager.get_model_display_name(session.current_model)
-        
+        display_name = self.model_manager.get_model_display_name(session.current_model).replace('-', '\\-').replace('.', '\\.')
+
         # Get usage statistics from database
         usage_stats = self.db_manager.get_user_usage_stats(user_id, days=30)
         session_stats = session.get_context_summary()
         cache_status = "✅ Valid" if self.model_manager.is_cache_valid() else "❌ Expired"
         
+        # Format numbers with commas
+        total_tokens = f"{usage_stats['total_tokens']:,}".replace(',', '\\,')
+        input_tokens = f"{usage_stats['total_input_tokens']:,}".replace(',', '\\,')
+        output_tokens = f"{usage_stats['total_output_tokens']:,}".replace(',', '\\,')
+        cost = f"{usage_stats['total_cost']:.4f}".replace('.', '\\.')
+
+        # Prepare document info
+        doc_info = '✅ ' + session_stats['document_filename'].replace('_', '\\_').replace('.', '\\.') if session_stats['has_document'] else '❌ None'
+
         await update.message.reply_text(
-            f"📊 **Usage Statistics (Last 30 Days):**\n\n"
-            f"🤖 **Current Model:** {display_name}\n"
-            f"🎭 **Assistant:** {session.current_assistant}\n"
-            f"💬 **Session Turns:** {session_stats['conversation_turns']}\n\n"
-            f"📈 **API Usage:**\n"
-            f"• **Total Requests:** {usage_stats['total_requests']}\n"
-            f"• **Total Tokens:** {usage_stats['total_tokens']:,}\n"
-            f"• **Input Tokens:** {usage_stats['total_input_tokens']:,}\n"
-            f"• **Output Tokens:** {usage_stats['total_output_tokens']:,}\n"
-            f"💰 **Estimated Cost:** ${usage_stats['total_cost']:.4f}\n\n"
-            f"📄 **Document:** {'✅ ' + session_stats['document_filename'] if session_stats['has_document'] else '❌ None'}\n"
-            f"🔄 **Models Cache:** {cache_status}",
+            f"📊 *Usage Statistics \\(Last 30 Days\\):*\n\n"
+            f"🤖 *Current Model:* {display_name}\n"
+            f"🎭 *Assistant:* {session.current_assistant.replace('_', '\\_')}\n"
+            f"💬 *Session Turns:* {session_stats['conversation_turns']}\n\n"
+            f"📈 *API Usage:*\n"
+            f"• *Total Requests:* {usage_stats['total_requests']}\n"
+            f"• *Total Tokens:* {total_tokens}\n"
+            f"• *Input Tokens:* {input_tokens}\n"
+            f"• *Output Tokens:* {output_tokens}\n"
+            f"💰 *Estimated Cost:* ${cost}\n\n"
+            f"📄 *Document:* {doc_info}\n"
+            f"🔄 *Models Cache:* {cache_status}",
             parse_mode=constants.ParseMode.MARKDOWN_V2
         )
     
@@ -372,7 +387,7 @@ class BotHandlers:
             assistants = self.session_manager.get_available_assistants()
             
             if not assistants:
-                await update.message.reply_text("❌ No assistants available.")
+                await update.message.reply_text("❌ No assistants available\\.")
                 return ConversationHandler.END
             
             # Create dynamic keyboard based on loaded assistants
@@ -393,7 +408,7 @@ class BotHandlers:
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
-                "🎭 **Select an Assistant Mode:**", 
+                "🎭 *Select an Assistant Mode:*",
                 reply_markup=reply_markup,
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
@@ -401,7 +416,7 @@ class BotHandlers:
             
         except Exception as e:
             log_error_with_context(logger, "Error in assistant selection", e)
-            await update.message.reply_text("❌ Error loading assistants. Please try again later.")
+            await update.message.reply_text("❌ Error loading assistants\\. Please try again later\\.")
             return ConversationHandler.END
     
     async def assistant_button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -429,18 +444,19 @@ class BotHandlers:
             self.session_manager.update_user_preferences(user_id, assistant=selected_assistant)
             
             assistant_config = self.session_manager.get_assistant_config(selected_assistant)
-            
+            description = assistant_config.get('description', 'No description').replace('_', '\\_').replace('.', '\\.')
+
             await query.edit_message_text(
-                f"✅ **Assistant mode changed to {selected_assistant}**\n\n"
-                f"📝 **Description:** {assistant_config.get('description', 'No description')}\n\n"
-                "You can now continue your conversation.",
+                f"✅ *Assistant mode changed to {selected_assistant.replace('_', '\\_')}*\n\n"
+                f"📝 *Description:* {description}\n\n"
+                "You can now continue your conversation\\.",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return ConversationHandler.END
             
         except Exception as e:
             log_error_with_context(logger, "Error in assistant selection callback", e)
-            await query.edit_message_text("❌ Error changing assistant. Please try again.")
+            await query.edit_message_text("❌ Error changing assistant\\. Please try again\\.")
             return ConversationHandler.END
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -587,7 +603,7 @@ class BotHandlers:
         
         # Check if there's a conversation history to summarize
         if not session.conversation_history:
-            await update.message.reply_text("❌ No conversation history to summarize.")
+            await update.message.reply_text("❌ No conversation history to summarize\\.")
             return
         
         try:
@@ -612,15 +628,18 @@ class BotHandlers:
             )
             
             summary = response.content[0].text
+            # Escape special characters in summary
+            escaped_summary = summary.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+
             await update.message.reply_text(
-                f"📋 **Conversation Summary:**\n\n{summary}",
+                f"📋 *Conversation Summary:*\n\n{escaped_summary}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
             log_error_with_context(logger, "Summarization error", e)
-            await update.message.reply_text("❌ Could not generate summary.")
-    
+            await update.message.reply_text("❌ Could not generate summary\\.")
+
     async def analyze_sentiment_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Perform sentiment analysis on the previous conversation or provided text."""
         user_id = update.effective_user.id
@@ -638,8 +657,8 @@ class BotHandlers:
         
         if not text_to_analyze:
             await update.message.reply_text(
-                "❌ Please provide text to analyze or have an active conversation.\n\n"
-                "**Usage:** `/sentiment <text to analyze>`",
+                "❌ Please provide text to analyze or have an active conversation\\.\n\n"
+                "*Usage:* `/sentiment <text to analyze>`",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
@@ -667,15 +686,18 @@ Please provide:
             )
             
             sentiment_analysis = response.content[0].text
+            # Escape special characters
+            escaped_analysis = sentiment_analysis.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+
             await update.message.reply_text(
-                f"🎭 **Sentiment Analysis:**\n\n{sentiment_analysis}",
+                f"🎭 *Sentiment Analysis:*\n\n{escaped_analysis}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
             log_error_with_context(logger, "Sentiment analysis error", e)
-            await update.message.reply_text("❌ Could not perform sentiment analysis.")
-    
+            await update.message.reply_text("❌ Could not perform sentiment analysis\\.")
+
     async def translate_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Translate text to a specified language."""
         user_id = update.effective_user.id
@@ -686,8 +708,8 @@ Please provide:
         
         if len(context.args) < 2:
             await update.message.reply_text(
-                "❌ **Usage:** `/translate <target_language> <text>`\n\n"
-                "**Example:** `/translate Spanish Hello, how are you?`",
+                "❌ *Usage:* `/translate <target_language> <text>`\n\n"
+                "*Example:* `/translate Spanish Hello, how are you?`",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
@@ -717,15 +739,19 @@ Please provide:
             )
             
             translation = response.content[0].text
+            escaped_language = target_language.replace('_', '\\_')
+            # Escape special characters in translation
+            escaped_translation = translation.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+
             await update.message.reply_text(
-                f"🌍 **Translation to {target_language}:**\n\n{translation}",
+                f"🌍 *Translation to {escaped_language}:*\n\n{escaped_translation}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
             log_error_with_context(logger, "Translation error", e)
-            await update.message.reply_text("❌ Could not perform translation.")
-    
+            await update.message.reply_text("❌ Could not perform translation\\.")
+
     async def code_explain_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Explain a piece of code or provide code-related assistance."""
         user_id = update.effective_user.id
@@ -736,8 +762,8 @@ Please provide:
         
         if len(context.args) < 2:
             await update.message.reply_text(
-                "❌ **Usage:** `/explain <programming_language> <code>`\n\n"
-                "**Example:** `/explain Python def fibonacci(n):`",
+                "❌ *Usage:* `/explain <programming_language> <code>`\n\n"
+                "*Example:* `/explain Python def fibonacci(n):`",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
@@ -770,15 +796,19 @@ Please explain:
             )
             
             code_explanation = response.content[0].text
+            escaped_language = language.replace('_', '\\_')
+            # Escape special characters
+            escaped_explanation = code_explanation.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+
             await update.message.reply_text(
-                f"💻 **Code Explanation ({language}):**\n\n{code_explanation}",
+                f"💻 *Code Explanation \\({escaped_language}\\):*\n\n{escaped_explanation}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
             log_error_with_context(logger, "Code explanation error", e)
-            await update.message.reply_text("❌ Could not explain the code.")
-    
+            await update.message.reply_text("❌ Could not explain the code\\.")
+
     async def upload_document_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle document upload command."""
         user_id = update.effective_user.id
@@ -788,10 +818,10 @@ Please explain:
             return
         
         await update.message.reply_text(
-            "📄 **Document Upload**\n\n"
-            "Upload a PDF or Word document, and I'll help you analyze it! "
-            "After uploading, you can ask questions about the document using `/docquery`.\n\n"
-            "**Supported formats:** PDF, DOCX",
+            "📄 *Document Upload*\n\n"
+            "Upload a PDF or Word document, and I'll help you analyze it\\! "
+            "After uploading, you can ask questions about the document using `/docquery`\\.\n\n"
+            "*Supported formats:* PDF, DOCX",
             parse_mode=constants.ParseMode.MARKDOWN_V2
         )
     
@@ -806,18 +836,19 @@ Please explain:
         
         # Validate file type
         if not validate_document_type(document.file_name):
+            escaped_filename = document.file_name.replace('_', '\\_').replace('.', '\\.')
             await update.message.reply_text(
-                f"❌ **Unsupported file type**\n\n"
-                f"Please upload only PDF or Word documents.\n"
-                f"**Received:** {document.file_name}",
+                f"❌ *Unsupported file type*\n\n"
+                f"Please upload only PDF or Word documents\\.\n"
+                f"*Received:* {escaped_filename}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
         
         try:
             # Show processing message
-            processing_msg = await update.message.reply_text("⏳ Processing document...")
-            
+            processing_msg = await update.message.reply_text("⏳ Processing document\\.\\.\\.")
+
             # Download the file
             file = await context.bot.get_file(document.file_id)
             temp_filename = create_temp_file(
@@ -851,11 +882,12 @@ Please explain:
                 content_preview=text
             )
             
+            escaped_filename = document.file_name.replace('_', '\\_').replace('.', '\\.')
             # Update processing message
             await processing_msg.edit_text(
-                f"✅ **Document processed successfully!**\n\n"
-                f"📄 **File:** {document.file_name}\n"
-                f"📊 **Size:** {len(text)} characters\n\n"
+                f"✅ *Document processed successfully\\!*\n\n"
+                f"📄 *File:* {escaped_filename}\n"
+                f"📊 *Size:* {len(text)} characters\n\n"
                 f"You can now ask questions about the document using `/docquery <your question>`",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
@@ -863,8 +895,8 @@ Please explain:
         except Exception as e:
             log_error_with_context(logger, "Document upload error", e)
             error_msg = safe_format_exception(e)
-            await processing_msg.edit_text(f"❌ **Error processing document:** {error_msg}")
-    
+            await processing_msg.edit_text(f"❌ *Error processing document:* {error_msg}")
+
     async def document_query_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Allow querying the uploaded document using Claude."""
         user_id = update.effective_user.id
@@ -882,8 +914,8 @@ Please explain:
         active_doc = self.db_manager.get_active_document(user_id)
         if not session.document_context and not active_doc:
             await update.message.reply_text(
-                "❌ **No document uploaded**\n\n"
-                "Please upload a document first using the file upload feature.",
+                "❌ *No document uploaded*\n\n"
+                "Please upload a document first using the file upload feature\\.",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
@@ -896,8 +928,8 @@ Please explain:
         query = " ".join(context.args) if context.args else None
         if not query:
             await update.message.reply_text(
-                "❌ **Usage:** `/docquery <your question about the document>`\n\n"
-                "**Example:** `/docquery What is the main topic of this document?`",
+                "❌ *Usage:* `/docquery <your question about the document>`\n\n"
+                "*Example:* `/docquery What is the main topic of this document?`",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             return
@@ -927,12 +959,15 @@ Please explain:
             
             # Send Claude's analysis
             analysis = response.content[0].text
+            # Escape special characters
+            escaped_analysis = analysis.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+
             await update.message.reply_text(
-                f"📄 **Document Analysis:**\n\n{analysis}",
+                f"📄 *Document Analysis:*\n\n{escaped_analysis}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
         except Exception as e:
             log_error_with_context(logger, "Document query error", e)
             error_msg = safe_format_exception(e)
-            await update.message.reply_text(f"❌ **Error querying document:** {error_msg}")
+            await update.message.reply_text(f"❌ *Error querying document:* {error_msg}")
