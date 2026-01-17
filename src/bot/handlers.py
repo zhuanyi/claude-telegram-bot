@@ -599,7 +599,7 @@ class BotHandlers:
             log_error_with_context(logger, "Error in message handling", e)
             error_msg = safe_format_exception(e)
             await self._edit_message_with_retry(message, f"❌ **Error:** {error_msg}")
-    
+
     async def summarize_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Summarize the previous conversation."""
         user_id = update.effective_user.id
@@ -637,11 +637,9 @@ class BotHandlers:
             )
             
             summary = response.content[0].text
-            # Escape special characters in summary
-            escaped_summary = self._escape_md_v2(summary)
 
             await update.message.reply_text(
-                f"📋 *Conversation Summary:*\n\n{escaped_summary}",
+                f"📋 *Conversation Summary:*\n\n{summary}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
@@ -695,11 +693,9 @@ Please provide:
             )
             
             sentiment_analysis = response.content[0].text
-            # Escape special characters
-            escaped_analysis = self._escape_md_v2(sentiment_analysis)
 
             await update.message.reply_text(
-                f"🎭 *Sentiment Analysis:*\n\n{escaped_analysis}",
+                f"🎭 *Sentiment Analysis:*\n\n{sentiment_analysis}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
@@ -749,11 +745,9 @@ Please provide:
             
             translation = response.content[0].text
             escaped_language = target_language.replace('_', '\\_')
-            # Escape special characters in translation
-            escaped_translation = self._escape_md_v2(translation)
 
             await update.message.reply_text(
-                f"🌍 *Translation to {escaped_language}:*\n\n{escaped_translation}",
+                f"🌍 *Translation to {escaped_language}:*\n\n{translation}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
@@ -806,11 +800,9 @@ Please explain:
             
             code_explanation = response.content[0].text
             escaped_language = language.replace('_', '\\_')
-            # Escape special characters
-            escaped_explanation = self._escape_md_v2(code_explanation)
 
             await update.message.reply_text(
-                f"💻 *Code Explanation \\({escaped_language}\\):*\n\n{escaped_explanation}",
+                f"💻 *Code Explanation \\({escaped_language}\\):*\n\n{code_explanation}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
             
@@ -968,13 +960,12 @@ Please explain:
             
             # Send Claude's analysis
             analysis = response.content[0].text
-            escaped_analysis = self._escape_md_v2(analysis)
-            # Use chunked sending to avoid "Message is too long"
-            header = "📄 *Document Analysis:*\n\n"
-            escaped_header = self._escape_md_v2(header)
-            # Send header once, then chunk the body
-            await update.message.reply_text(escaped_header, parse_mode=constants.ParseMode.MARKDOWN_V2)
-            await self._send_long_markdown(update, escaped_analysis)
+            # Send header with formatting, then chunk the body
+            await update.message.reply_text(
+                "📄 *Document Analysis:*",
+                parse_mode=constants.ParseMode.MARKDOWN_V2
+            )
+            await self._send_long_markdown(update, analysis)
 
         except Exception as e:
             log_error_with_context(logger, "Document query error", e)
