@@ -140,14 +140,11 @@ class BotHandlers:
             
             # Fetch fresh models
             models = self.model_manager.fetch_available_models()
-            
-            # Escape model names for Markdown V2
-            escaped_names = [name.replace('-', '\\-').replace('.', '\\.') for name in models.keys()]
+            # Escape model names for Markdown V2 outside f-string
+            escaped_names = [self._escape_md_v2(name) for name in models.keys()]
             model_list = "\n".join([f"• {name}" for name in escaped_names])
-
             await update.message.reply_text(
-                f"🔄 Refreshed model list\\. Found {len(models)} available models:\n\n" +
-                model_list
+                f"🔄 Refreshed model list\\. Found {len(models)} available models:\n\n" + model_list
             )
         except Exception as e:
             log_error_with_context(logger, "Error refreshing models", e)
@@ -191,13 +188,14 @@ class BotHandlers:
                 try:
                     available_models = self.model_manager.fetch_available_models()
                     models_status = f"✅ *{len(available_models)} models available*"
-                    escaped_names = [name.replace('-', '\\-').replace('.', '\\.') for name in list(available_models.keys())[:10]]
+                    escaped_names = [self._escape_md_v2(name) for name in list(available_models.keys())[:10]]
                     model_list = "\n".join([f"• {name}" for name in escaped_names])
                     if len(available_models) > 10:
-                        model_list += f"\n• \\.\\.\\. and {len(available_models) - 10} more"
+                        more_count = len(available_models) - 10
+                        model_list += f"\n• \\.\\.\\. and {more_count} more"
                 except Exception as e:
                     models_status = "❌ *Failed to fetch models*"
-                    error_str = str(e)[:100].replace('_', '\\_').replace('.', '\\.').replace('-', '\\-')
+                    error_str = self._escape_md_v2(str(e)[:100])
                     model_list = f"Error: {error_str}"
 
                 # Get current session info
@@ -205,8 +203,10 @@ class BotHandlers:
                 user_session = self.session_manager.get_or_create_session(
                     user_id, user.username, user.first_name, user.last_name
                 )
-                current_model = self.model_manager.get_model_display_name(user_session.current_model).replace('-', '\\-').replace('.', '\\.')
-                assistant_name = user_session.current_assistant.replace('_', '\\_')
+                current_model = self._escape_md_v2(
+                    self.model_manager.get_model_display_name(user_session.current_model)
+                )
+                assistant_name = self._escape_md_v2(user_session.current_assistant)
 
                 # Get cache status
                 cache_status = "✅ *Valid*" if self.model_manager.is_cache_valid() else "❌ *Expired*"
@@ -230,7 +230,7 @@ class BotHandlers:
                 )
                 
         except aiohttp.ClientError as e:
-            error_str = str(e).replace('_', '\\_').replace('.', '\\.').replace('-', '\\-').replace('(', '\\(').replace(')', '\\)')
+            error_str = self._escape_md_v2(str(e))
             await self._edit_message_with_retry(
                 processing_msg,
                 f"❌ *Network Error*\n\nFailed to connect to Claude API:\n`{error_str}`",
@@ -320,7 +320,6 @@ class BotHandlers:
             # Get display name for confirmation and escape for Markdown V2 (handles parentheses)
             raw_display_name = self.model_manager.get_model_display_name(model_id)
             display_name = self._escape_md_v2(raw_display_name)
-
             await query.edit_message_text(
                 f"✅ *Model changed to {display_name}*\n\n"
                 "You can now continue your conversation\\.",
@@ -345,7 +344,9 @@ class BotHandlers:
         session = self.session_manager.get_or_create_session(
             user_id, user.username, user.first_name, user.last_name
         )
-        display_name = self.model_manager.get_model_display_name(session.current_model).replace('-', '\\-').replace('.', '\\.')
+        display_name = self._escape_md_v2(
+            self.model_manager.get_model_display_name(session.current_model)
+        )
 
         # Get usage statistics from database
         usage_stats = self.db_manager.get_user_usage_stats(user_id, days=30)
@@ -360,12 +361,11 @@ class BotHandlers:
 
         # Prepare document info
         if session_stats['has_document']:
-            doc_filename = session_stats['document_filename'].replace('_', '\\_').replace('.', '\\.')
+            doc_filename = self._escape_md_v2(session_stats['document_filename'])
             doc_info = f'✅ {doc_filename}'
         else:
             doc_info = '❌ None'
-
-        assistant_name = session.current_assistant.replace('_', '\\_')
+        assistant_name = self._escape_md_v2(session.current_assistant)
 
         await update.message.reply_text(
             f"📊 *Usage Statistics \\(Last 30 Days\\):*\n\n"
@@ -453,9 +453,8 @@ class BotHandlers:
             self.session_manager.update_user_preferences(user_id, assistant=selected_assistant)
             
             assistant_config = self.session_manager.get_assistant_config(selected_assistant)
-            description = assistant_config.get('description', 'No description').replace('_', '\\_').replace('.', '\\.')
-            escaped_assistant = selected_assistant.replace('_', '\\_')
-
+            description = self._escape_md_v2(assistant_config.get('description', 'No description'))
+            escaped_assistant = self._escape_md_v2(selected_assistant)
             await query.edit_message_text(
                 f"✅ *Assistant mode changed to {escaped_assistant}*\n\n"
                 f"📝 *Description:* {description}\n\n"
@@ -639,7 +638,7 @@ class BotHandlers:
             
             summary = response.content[0].text
             # Escape special characters in summary
-            escaped_summary = summary.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+            escaped_summary = self._escape_md_v2(summary)
 
             await update.message.reply_text(
                 f"📋 *Conversation Summary:*\n\n{escaped_summary}",
@@ -697,7 +696,7 @@ Please provide:
             
             sentiment_analysis = response.content[0].text
             # Escape special characters
-            escaped_analysis = sentiment_analysis.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+            escaped_analysis = self._escape_md_v2(sentiment_analysis)
 
             await update.message.reply_text(
                 f"🎭 *Sentiment Analysis:*\n\n{escaped_analysis}",
@@ -751,7 +750,7 @@ Please provide:
             translation = response.content[0].text
             escaped_language = target_language.replace('_', '\\_')
             # Escape special characters in translation
-            escaped_translation = translation.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+            escaped_translation = self._escape_md_v2(translation)
 
             await update.message.reply_text(
                 f"🌍 *Translation to {escaped_language}:*\n\n{escaped_translation}",
@@ -808,7 +807,7 @@ Please explain:
             code_explanation = response.content[0].text
             escaped_language = language.replace('_', '\\_')
             # Escape special characters
-            escaped_explanation = code_explanation.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+            escaped_explanation = self._escape_md_v2(code_explanation)
 
             await update.message.reply_text(
                 f"💻 *Code Explanation \\({escaped_language}\\):*\n\n{escaped_explanation}",
@@ -846,7 +845,7 @@ Please explain:
         
         # Validate file type
         if not validate_document_type(document.file_name):
-            escaped_filename = document.file_name.replace('_', '\\_').replace('.', '\\.')
+            escaped_filename = self._escape_md_v2(document.file_name)
             await update.message.reply_text(
                 f"❌ *Unsupported file type*\n\n"
                 f"Please upload only PDF or Word documents\\.\n"
@@ -892,7 +891,7 @@ Please explain:
                 content_preview=text
             )
             
-            escaped_filename = document.file_name.replace('_', '\\_').replace('.', '\\.')
+            escaped_filename = self._escape_md_v2(document.file_name)
             # Update processing message
             await processing_msg.edit_text(
                 f"✅ *Document processed successfully\\!*\n\n"
@@ -969,9 +968,7 @@ Please explain:
             
             # Send Claude's analysis
             analysis = response.content[0].text
-            # Escape special characters
-            escaped_analysis = analysis.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
-
+            escaped_analysis = self._escape_md_v2(analysis)
             await update.message.reply_text(
                 f"📄 *Document Analysis:*\n\n{escaped_analysis}",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
@@ -981,3 +978,13 @@ Please explain:
             log_error_with_context(logger, "Document query error", e)
             error_msg = safe_format_exception(e)
             await update.message.reply_text(f"❌ *Error querying document:* {error_msg}")
+
+    def _escape_md_v2(self, text: str) -> str:
+        # Escape Telegram Markdown V2 special characters safely
+        if text is None:
+            return ""
+        # Order matters: escape backslash first
+        escaped = text.replace('\\', '\\\\')
+        for ch in ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']:
+            escaped = escaped.replace(ch, '\\' + ch)
+        return escaped
