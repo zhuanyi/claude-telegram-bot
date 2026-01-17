@@ -822,8 +822,11 @@ Please explain:
             temp_filename = create_temp_file(
                 suffix=('.' + document.file_name.split('.')[-1])
             )
-            
-            await file.download_to_file(temp_filename)
+
+            # Download file content and write to temporary file
+            file_content = await file.download_as_bytearray()
+            with open(temp_filename, 'wb') as f:
+                f.write(file_content)
             
             # Extract text
             text = extract_document_text(temp_filename, document.file_name)
