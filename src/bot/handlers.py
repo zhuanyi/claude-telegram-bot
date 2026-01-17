@@ -317,8 +317,9 @@ class BotHandlers:
             # Update preferences in database
             self.session_manager.update_user_preferences(user_id, model=model_id)
             
-            # Get display name for confirmation
-            display_name = self.model_manager.get_model_display_name(model_id).replace('-', '\\-').replace('.', '\\.')
+            # Get display name for confirmation and escape for Markdown V2 (handles parentheses)
+            raw_display_name = self.model_manager.get_model_display_name(model_id)
+            display_name = self._escape_md_v2(raw_display_name)
 
             await query.edit_message_text(
                 f"✅ *Model changed to {display_name}*\n\n"
