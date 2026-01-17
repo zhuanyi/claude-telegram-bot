@@ -969,11 +969,13 @@ Please explain:
             # Send Claude's analysis
             analysis = response.content[0].text
             escaped_analysis = self._escape_md_v2(analysis)
-            await update.message.reply_text(
-                f"📄 *Document Analysis:*\n\n{escaped_analysis}",
-                parse_mode=constants.ParseMode.MARKDOWN_V2
-            )
-            
+            # Use chunked sending to avoid "Message is too long"
+            header = "📄 *Document Analysis:*\n\n"
+            escaped_header = self._escape_md_v2(header)
+            # Send header once, then chunk the body
+            await update.message.reply_text(escaped_header, parse_mode=constants.ParseMode.MARKDOWN_V2)
+            await self._send_long_markdown(update, escaped_analysis)
+
         except Exception as e:
             log_error_with_context(logger, "Document query error", e)
             error_msg = safe_format_exception(e)
@@ -988,3 +990,24 @@ Please explain:
         for ch in ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']:
             escaped = escaped.replace(ch, '\\' + ch)
         return escaped
+
+    async def _send_long_markdown(self, update: Update, text: str, chunk_size: int = 3800) -> None:
+        """
+        Send a long Markdown V2 message by splitting into safe chunks.
+        chunk_size < 4096 to leave room for prefix/newlines.
+        """
+        if not text:
+            return
+        # Split at newline boundaries when possible to avoid breaking formatting
+        start = 0
+        length = len(text)
+        while start < length:
+            end = min(start + chunk_size, length)
+            # try to break at last newline before end
+            newline_pos = text.rfind('\n', start, end)
+            if newline_pos != -1 and newline_pos > start:
+                end = newline_pos + 1
+            chunk = text[start:end]
+            await update.message.reply_text(chunk, parse_mode=constants.ParseMode.MARKDOWN_V2)
+            start = end
+
