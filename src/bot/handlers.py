@@ -142,7 +142,8 @@ class BotHandlers:
             models = self.model_manager.fetch_available_models()
             
             # Escape model names for Markdown V2
-            model_list = "\n".join([f"• {name.replace('-', '\\-').replace('.', '\\.')}" for name in models.keys()])
+            escaped_names = [name.replace('-', '\\-').replace('.', '\\.') for name in models.keys()]
+            model_list = "\n".join([f"• {name}" for name in escaped_names])
 
             await update.message.reply_text(
                 f"🔄 Refreshed model list\\. Found {len(models)} available models:\n\n" +
@@ -190,7 +191,8 @@ class BotHandlers:
                 try:
                     available_models = self.model_manager.fetch_available_models()
                     models_status = f"✅ *{len(available_models)} models available*"
-                    model_list = "\n".join([f"• {name.replace('-', '\\-').replace('.', '\\.')}" for name in list(available_models.keys())[:10]])
+                    escaped_names = [name.replace('-', '\\-').replace('.', '\\.') for name in list(available_models.keys())[:10]]
+                    model_list = "\n".join([f"• {name}" for name in escaped_names])
                     if len(available_models) > 10:
                         model_list += f"\n• \\.\\.\\. and {len(available_models) - 10} more"
                 except Exception as e:
@@ -350,25 +352,31 @@ class BotHandlers:
         cache_status = "✅ Valid" if self.model_manager.is_cache_valid() else "❌ Expired"
         
         # Format numbers with commas
-        total_tokens = f"{usage_stats['total_tokens']:,}".replace(',', '\\,')
-        input_tokens = f"{usage_stats['total_input_tokens']:,}".replace(',', '\\,')
-        output_tokens = f"{usage_stats['total_output_tokens']:,}".replace(',', '\\,')
-        cost = f"{usage_stats['total_cost']:.4f}".replace('.', '\\.')
+        total_tokens_str = f"{usage_stats['total_tokens']:,}".replace(',', '\\,')
+        input_tokens_str = f"{usage_stats['total_input_tokens']:,}".replace(',', '\\,')
+        output_tokens_str = f"{usage_stats['total_output_tokens']:,}".replace(',', '\\,')
+        cost_str = f"{usage_stats['total_cost']:.4f}".replace('.', '\\.')
 
         # Prepare document info
-        doc_info = '✅ ' + session_stats['document_filename'].replace('_', '\\_').replace('.', '\\.') if session_stats['has_document'] else '❌ None'
+        if session_stats['has_document']:
+            doc_filename = session_stats['document_filename'].replace('_', '\\_').replace('.', '\\.')
+            doc_info = f'✅ {doc_filename}'
+        else:
+            doc_info = '❌ None'
+
+        assistant_name = session.current_assistant.replace('_', '\\_')
 
         await update.message.reply_text(
             f"📊 *Usage Statistics \\(Last 30 Days\\):*\n\n"
             f"🤖 *Current Model:* {display_name}\n"
-            f"🎭 *Assistant:* {session.current_assistant.replace('_', '\\_')}\n"
+            f"🎭 *Assistant:* {assistant_name}\n"
             f"💬 *Session Turns:* {session_stats['conversation_turns']}\n\n"
             f"📈 *API Usage:*\n"
             f"• *Total Requests:* {usage_stats['total_requests']}\n"
-            f"• *Total Tokens:* {total_tokens}\n"
-            f"• *Input Tokens:* {input_tokens}\n"
-            f"• *Output Tokens:* {output_tokens}\n"
-            f"💰 *Estimated Cost:* ${cost}\n\n"
+            f"• *Total Tokens:* {total_tokens_str}\n"
+            f"• *Input Tokens:* {input_tokens_str}\n"
+            f"• *Output Tokens:* {output_tokens_str}\n"
+            f"💰 *Estimated Cost:* ${cost_str}\n\n"
             f"📄 *Document:* {doc_info}\n"
             f"🔄 *Models Cache:* {cache_status}",
             parse_mode=constants.ParseMode.MARKDOWN_V2
@@ -445,9 +453,10 @@ class BotHandlers:
             
             assistant_config = self.session_manager.get_assistant_config(selected_assistant)
             description = assistant_config.get('description', 'No description').replace('_', '\\_').replace('.', '\\.')
+            escaped_assistant = selected_assistant.replace('_', '\\_')
 
             await query.edit_message_text(
-                f"✅ *Assistant mode changed to {selected_assistant.replace('_', '\\_')}*\n\n"
+                f"✅ *Assistant mode changed to {escaped_assistant}*\n\n"
                 f"📝 *Description:* {description}\n\n"
                 "You can now continue your conversation\\.",
                 parse_mode=constants.ParseMode.MARKDOWN_V2
