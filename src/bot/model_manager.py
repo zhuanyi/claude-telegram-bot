@@ -62,23 +62,14 @@ class ModelManager:
             client = anthropic.Anthropic(api_key=self.api_key)
             models = client.models.list()
 
-            # Log all models from API for debugging
-            all_model_ids = [model.id for model in models]
-            logger.info(f"🔍 Raw models from API ({len(all_model_ids)} total): {all_model_ids}")
-
             # Filter only current generation Claude models
             raw_models = {}
-            filtered_out = []
             for model in models:
                 model_id = model.id
                 if self._is_current_model(model_id):
                     raw_models[model_id] = model_id
-                    logger.info(f"  ✅ INCLUDED: {model_id}")
                 else:
-                    filtered_out.append(model_id)
-                    logger.info(f"  ❌ FILTERED: {model_id}")
-
-            logger.info(f"📊 Models after filtering ({len(raw_models)} kept, {len(filtered_out)} filtered): {list(raw_models.keys())}")
+                    logger.debug(f"Filtered out model: {model_id}")
 
             # Process models to prioritize 'latest' versions and create display names
             claude_models = self._process_and_prioritize_models(raw_models)
@@ -87,11 +78,7 @@ class ModelManager:
             self.models_cache = claude_models
             self.cache_timestamp = datetime.now()
 
-            logger.info(f"✅ Fetched {len(claude_models)} Claude models from API")
-            logger.info(f"📋 Final model list:")
-            for display_name, model_id in claude_models.items():
-                logger.info(f"  • {display_name} -> {model_id}")
-
+            logger.info(f"Fetched {len(claude_models)} Claude models from API")
             return claude_models
 
         except Exception as e:
