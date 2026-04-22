@@ -129,26 +129,51 @@ class BotHandlers:
     async def refresh_models_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Manually refresh the available models from the API."""
         user_id = update.effective_user.id
-        
+
         if not self.is_user_authorized(user_id):
             await update.message.reply_text("⚠️ Unauthorized access")
             return
-        
+
+        # Show processing message
+        processing_msg = await self._send_message_with_retry(update, "🔍 Refreshing model list\\.\\.\\.")
+
         try:
             # Clear cache to force refresh
             self.model_manager.clear_cache()
-            
-            # Fetch fresh models
+
+            # Fetch fresh models (this will update the cache internally)
             models = self.model_manager.fetch_available_models()
-            # Escape model names for Markdown V2 outside f-string
+
+            if not models:
+                await self._edit_message_with_retry(
+                    processing_msg,
+                    "❌ No models found\\. Please try again later\\.",
+                    parse_mode=constants.ParseMode.MARKDOWN_V2
+                )
+                return
+
+            # Escape model names for Markdown V2
             escaped_names = [self._escape_md_v2(name) for name in models.keys()]
             model_list = "\n".join([f"• {name}" for name in escaped_names])
-            await update.message.reply_text(
-                f"🔄 Refreshed model list\\. Found {len(models)} available models:\n\n" + model_list
+
+            # Verify cache was updated
+            cache_status = "✅ Valid" if self.model_manager.is_cache_valid() else "❌ Expired"
+
+            await self._edit_message_with_retry(
+                processing_msg,
+                f"🔄 *Refreshed model list\\!*\n\n"
+                f"📊 *Found {len(models)} available models:*\n{model_list}\n\n"
+                f"🔄 *Cache Status:* {cache_status}",
+                parse_mode=constants.ParseMode.MARKDOWN_V2
             )
         except Exception as e:
             log_error_with_context(logger, "Error refreshing models", e)
-            await update.message.reply_text("❌ Failed to refresh models\\. Please try again later\\.")
+            error_str = self._escape_md_v2(str(e)[:100])
+            await self._edit_message_with_retry(
+                processing_msg,
+                f"❌ *Failed to refresh models*\n\nError: {error_str}",
+                parse_mode=constants.ParseMode.MARKDOWN_V2
+            )
 
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Query and display Claude API status information."""
