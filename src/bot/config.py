@@ -87,8 +87,8 @@ SUPPORTED_DOCUMENT_EXTENSIONS = ('.pdf', '.docx')
 
 # Model filtering patterns
 CURRENT_MODEL_PATTERNS = [
-    'claude-3-5', 'claude-3-7', 'claude-4', 
-    'claude-sonnet-4', 'claude-opus-4'
+    'claude-3-5', 'claude-3-7', 'claude-4',
+    'claude-sonnet-4', 'claude-opus-4', 'claude-haiku-4'
 ]
 
 # Telegram message limits

@@ -50,35 +50,43 @@ class ModelManager:
     def fetch_available_models(self) -> Dict[str, str]:
         """
         Retrieve list of Claude models via the API with caching.
-        
+
         Returns:
             Dict mapping display names to model IDs
         """
         if self.is_cache_valid() and self.models_cache:
             logger.info("Using cached model list")
             return self.models_cache
-            
+
         try:
             client = anthropic.Anthropic(api_key=self.api_key)
             models = client.models.list()
-            
+
+            # Log all models from API for debugging
+            all_model_ids = [model.id for model in models]
+            logger.info(f"Raw models from API: {all_model_ids}")
+
             # Filter only current generation Claude models
             raw_models = {}
             for model in models:
                 model_id = model.id
                 if self._is_current_model(model_id):
                     raw_models[model_id] = model_id
-            
+                else:
+                    logger.debug(f"Filtered out model: {model_id}")
+
+            logger.info(f"Models after filtering: {list(raw_models.keys())}")
+
             # Process models to prioritize 'latest' versions and create display names
             claude_models = self._process_and_prioritize_models(raw_models)
-            
+
             # Update cache
             self.models_cache = claude_models
             self.cache_timestamp = datetime.now()
-            
+
             logger.info(f"Fetched {len(claude_models)} Claude models from API")
             return claude_models
-            
+
         except Exception as e:
             logger.error(f"Failed to fetch models from API: {e}")
             return self._get_fallback_models()
@@ -175,21 +183,26 @@ class ModelManager:
     def _extract_base_type(self, model_id: str) -> str:
         """
         Extract base model type from model ID.
-        
+
         Args:
             model_id: The model ID to extract base type from
-            
+
         Returns:
-            Base model type (e.g., 'haiku', 'sonnet-3-5', 'opus-4')
+            Base model type (e.g., 'haiku-4', 'sonnet-4-5', 'opus-4')
         """
         # Remove 'claude-' prefix and extract base type
         clean_id = model_id.replace('claude-', '')
-        
+
         # Handle different naming patterns
         if 'haiku' in clean_id:
-            return 'haiku'
+            if '4' in clean_id or 'haiku-4' in clean_id:
+                return 'haiku-4'
+            else:
+                return 'haiku'
         elif 'sonnet' in clean_id:
-            if '3-5' in clean_id:
+            if '4-5' in clean_id or 'sonnet-4-5' in clean_id:
+                return 'sonnet-4-5'
+            elif '3-5' in clean_id:
                 return 'sonnet-3-5'
             elif '3-7' in clean_id:
                 return 'sonnet-3-7'
@@ -208,16 +221,16 @@ class ModelManager:
     def _create_dynamic_display_name(self, model_id: str) -> str:
         """
         Create a user-friendly display name from model ID dynamically.
-        
+
         Args:
             model_id: The model ID to create display name for
-            
+
         Returns:
             User-friendly display name
         """
         # Remove 'claude-' prefix
         clean_id = model_id.replace('claude-', '')
-        
+
         # Handle different patterns
         if 'latest' in clean_id:
             # For 'latest' versions
@@ -227,18 +240,25 @@ class ModelManager:
                 return 'Sonnet 3.5 (Latest)'
             elif '3-7-sonnet' in clean_id:
                 return 'Sonnet 3.7 (Latest)'
+            elif 'sonnet-4-5' in clean_id or '4-5-sonnet' in clean_id:
+                return 'Sonnet 4.5 (Latest)'
             elif 'sonnet-4' in clean_id:
                 return 'Sonnet 4 (Latest)'
+            elif 'haiku-4' in clean_id or '4-haiku' in clean_id:
+                return 'Haiku 4 (Latest)'
             elif 'opus-4' in clean_id:
                 return 'Opus 4 (Latest)'
-        
+
         # Handle dated versions
         if 'haiku' in clean_id:
             version = self._extract_version(clean_id)
             date_str = self._format_date_from_id(clean_id)
             return f'Haiku {version} ({date_str})'
         elif 'sonnet' in clean_id:
-            if 'sonnet-4' in clean_id:
+            if 'sonnet-4-5' in clean_id or '4-5-sonnet' in clean_id:
+                date_str = self._format_date_from_id(clean_id)
+                return f'Sonnet 4.5 ({date_str})'
+            elif 'sonnet-4' in clean_id:
                 date_str = self._format_date_from_id(clean_id)
                 return f'Sonnet 4 ({date_str})'
             else:
@@ -253,13 +273,15 @@ class ModelManager:
                 version = self._extract_version(clean_id)
                 date_str = self._format_date_from_id(clean_id)
                 return f'Opus {version} ({date_str})'
-        
+
         # Fallback: capitalize and replace hyphens
         return clean_id.replace('-', ' ').title()
     
     def _extract_version(self, clean_id: str) -> str:
         """Extract version number from model ID."""
-        if '3-5' in clean_id:
+        if '4-5' in clean_id:
+            return '4.5'
+        elif '3-5' in clean_id:
             return '3.5'
         elif '3-7' in clean_id:
             return '3.7'
