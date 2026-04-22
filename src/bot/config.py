@@ -86,9 +86,15 @@ DEFAULT_ASSISTANT_CONFIG_PATH = 'assistants_mode.xml'
 SUPPORTED_DOCUMENT_EXTENSIONS = ('.pdf', '.docx')
 
 # Model filtering patterns
+# Note: These patterns use substring matching, so 'claude-4' will match all 4.x versions
+# including 4.5, 4.6, 4.7, etc. regardless of naming convention
 CURRENT_MODEL_PATTERNS = [
-    'claude-3-5', 'claude-3-7', 'claude-4',
-    'claude-sonnet-4', 'claude-opus-4', 'claude-haiku-4'
+    'claude-3-5',      # Matches claude-3-5-* (Haiku 3.5, Sonnet 3.5)
+    'claude-3-7',      # Matches claude-3-7-* (Sonnet 3.7)
+    'claude-4',        # Matches all claude-4* models (4.0, 4.5, 4.6, 4.7, etc.)
+    'sonnet-4',        # Matches claude-sonnet-4* (4.0, 4.5, 4.6, etc.)
+    'opus-4',          # Matches claude-opus-4* (4.0, 4.5, 4.6, etc.)
+    'haiku-4',         # Matches claude-haiku-4* (4.0, 4.5, 4.6, etc.)
 ]
 
 # Telegram message limits

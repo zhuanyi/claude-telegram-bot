@@ -190,33 +190,33 @@ class ModelManager:
         Returns:
             Base model type (e.g., 'haiku-4', 'sonnet-4-5', 'opus-4')
         """
+        import re
+
         # Remove 'claude-' prefix and extract base type
         clean_id = model_id.replace('claude-', '')
 
-        # Handle different naming patterns
+        # Determine model family (haiku, sonnet, opus)
+        family = None
         if 'haiku' in clean_id:
-            if '4' in clean_id or 'haiku-4' in clean_id:
-                return 'haiku-4'
-            else:
-                return 'haiku'
+            family = 'haiku'
         elif 'sonnet' in clean_id:
-            if '4-5' in clean_id or 'sonnet-4-5' in clean_id:
-                return 'sonnet-4-5'
-            elif '3-5' in clean_id:
-                return 'sonnet-3-5'
-            elif '3-7' in clean_id:
-                return 'sonnet-3-7'
-            elif '4' in clean_id or 'sonnet-4' in clean_id:
-                return 'sonnet-4'
-            else:
-                return 'sonnet'
+            family = 'sonnet'
         elif 'opus' in clean_id:
-            if '4' in clean_id or 'opus-4' in clean_id:
-                return 'opus-4'
-            else:
-                return 'opus'
+            family = 'opus'
         else:
             return 'unknown'
+
+        # Extract version pattern (e.g., 3-5, 4, 4-5, 4-6)
+        version_match = re.search(r'(\d+)(?:-(\d+))?', clean_id)
+        if version_match:
+            major = version_match.group(1)
+            minor = version_match.group(2)
+            if minor:
+                return f'{family}-{major}-{minor}'
+            else:
+                return f'{family}-{major}'
+
+        return family
     
     def _create_dynamic_display_name(self, model_id: str) -> str:
         """
@@ -227,66 +227,58 @@ class ModelManager:
 
         Returns:
             User-friendly display name
+
+        Examples:
+            claude-3-5-sonnet-latest -> Sonnet 3.5 (Latest)
+            claude-sonnet-4-5-latest -> Sonnet 4.5 (Latest)
+            claude-4-6-opus-20260515 -> Opus 4.6 (May 2026)
         """
         # Remove 'claude-' prefix
         clean_id = model_id.replace('claude-', '')
 
-        # Handle different patterns
-        if 'latest' in clean_id:
-            # For 'latest' versions
-            if '3-5-haiku' in clean_id:
-                return 'Haiku 3.5 (Latest)'
-            elif '3-5-sonnet' in clean_id:
-                return 'Sonnet 3.5 (Latest)'
-            elif '3-7-sonnet' in clean_id:
-                return 'Sonnet 3.7 (Latest)'
-            elif 'sonnet-4-5' in clean_id or '4-5-sonnet' in clean_id:
-                return 'Sonnet 4.5 (Latest)'
-            elif 'sonnet-4' in clean_id:
-                return 'Sonnet 4 (Latest)'
-            elif 'haiku-4' in clean_id or '4-haiku' in clean_id:
-                return 'Haiku 4 (Latest)'
-            elif 'opus-4' in clean_id:
-                return 'Opus 4 (Latest)'
-
-        # Handle dated versions
+        # Determine model family
+        family_name = None
         if 'haiku' in clean_id:
-            version = self._extract_version(clean_id)
-            date_str = self._format_date_from_id(clean_id)
-            return f'Haiku {version} ({date_str})'
+            family_name = 'Haiku'
         elif 'sonnet' in clean_id:
-            if 'sonnet-4-5' in clean_id or '4-5-sonnet' in clean_id:
-                date_str = self._format_date_from_id(clean_id)
-                return f'Sonnet 4.5 ({date_str})'
-            elif 'sonnet-4' in clean_id:
-                date_str = self._format_date_from_id(clean_id)
-                return f'Sonnet 4 ({date_str})'
-            else:
-                version = self._extract_version(clean_id)
-                date_str = self._format_date_from_id(clean_id)
-                return f'Sonnet {version} ({date_str})'
+            family_name = 'Sonnet'
         elif 'opus' in clean_id:
-            if 'opus-4' in clean_id:
-                date_str = self._format_date_from_id(clean_id)
-                return f'Opus 4 ({date_str})'
-            else:
-                version = self._extract_version(clean_id)
-                date_str = self._format_date_from_id(clean_id)
-                return f'Opus {version} ({date_str})'
+            family_name = 'Opus'
+        else:
+            # Fallback: capitalize and replace hyphens
+            return clean_id.replace('-', ' ').title()
 
-        # Fallback: capitalize and replace hyphens
-        return clean_id.replace('-', ' ').title()
+        # Extract version
+        version = self._extract_version(clean_id)
+
+        # Check if it's a "latest" version
+        if 'latest' in clean_id:
+            return f'{family_name} {version} (Latest)'
+
+        # Otherwise, it's a dated version
+        date_str = self._format_date_from_id(clean_id)
+        return f'{family_name} {version} ({date_str})'
     
     def _extract_version(self, clean_id: str) -> str:
-        """Extract version number from model ID."""
-        if '4-5' in clean_id:
-            return '4.5'
-        elif '3-5' in clean_id:
-            return '3.5'
-        elif '3-7' in clean_id:
-            return '3.7'
-        elif '4' in clean_id:
+        """
+        Extract version number from model ID.
+
+        Handles versions like 3.5, 3.7, 4, 4.5, 4.6, 4.7, etc.
+        """
+        import re
+
+        # Try to match X-Y pattern (e.g., 4-5, 3-7, 4-6)
+        version_match = re.search(r'(\d+)-(\d+)', clean_id)
+        if version_match:
+            major = version_match.group(1)
+            minor = version_match.group(2)
+            return f'{major}.{minor}'
+
+        # If no X-Y pattern, check for just major version
+        if '4' in clean_id:
             return '4'
+        elif '3' in clean_id:
+            return '3'
         else:
             return '3'
     
